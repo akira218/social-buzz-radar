@@ -196,6 +196,15 @@ function renderResults(data) {
       publishedInfo.className = `published-info ${freshnessClass(trend.publishedAt)}`;
     }
 
+    // 各カードに「この話題でClaude生成」ボタンを設置
+    const genBtn = node.querySelector(".claude-gen-btn");
+    const resultArea = node.querySelector(".claude-result");
+    if (genBtn && resultArea) {
+      genBtn.addEventListener("click", async () => {
+        await generateForSpecificTrend(plan.trend, genBtn, resultArea);
+      });
+    }
+
     const scoreGrid = node.querySelector(".score-grid");
     scoreGrid.innerHTML = ["note", "x", "instagram"].map((key) => (
       `<div>${key}<strong>${Math.round(trend.platformScores[key])}</strong></div>`
@@ -297,6 +306,52 @@ $("#analyzeBtn").addEventListener("click", () => analyze(true));
 const variationBtn = $("#variationBtn");
 if (variationBtn) {
   variationBtn.addEventListener("click", () => generateVariations());
+}
+
+async function generateForSpecificTrend(trend, btn, resultArea) {
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "✨ 生成中…（約50秒）";
+  resultArea.innerHTML = `<p class="claude-loading">Claudeが書いています…</p>`;
+
+  try {
+    const response = await fetch("/api/variations", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeaders() },
+      body: JSON.stringify({
+        trends: [{
+          title: trend.title,
+          publishedAt: trend.publishedAt,
+          sources: trend.sources,
+          url: trend.url
+        }],
+        niche: $("#niche").value,
+        audience: $("#audience").value,
+        brandStance: $("#brandStance").value
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "生成に失敗");
+    const entry = (data.variations || [])[0];
+    if (!entry) throw new Error("結果が空でした");
+
+    const v = entry.variations;
+    resultArea.innerHTML = `
+      <div class="claude-result-head">
+        <span class="claude-badge">${data.engine === "claude-haiku-4-5" ? "✨ Claude生成" : "テンプレ生成"}</span>
+        ${data.algorithmContextUsed ? `<span class="claude-badge subtle">アルゴリズム情報を考慮</span>` : ""}
+      </div>
+      ${renderPlatformBlock("x", v.x)}
+      ${renderPlatformBlock("instagram", v.instagram)}
+      ${renderPlatformBlock("tiktok", v.tiktok)}
+      ${renderPlatformBlock("note", v.note)}
+    `;
+  } catch (error) {
+    resultArea.innerHTML = `<p class="claude-error">生成に失敗しました: ${escapeHtml(error.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 
 async function generateVariations() {

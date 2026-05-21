@@ -812,6 +812,106 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+/* この話題でClaude生成 CTA */
+.card-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e8f5ee 0%, #f0e7ff 100%);
+}
+
+.claude-gen-btn {
+  width: auto;
+  min-height: 40px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.claude-gen-btn:hover { opacity: 0.85; }
+.claude-gen-btn:disabled { cursor: wait; opacity: 0.6; }
+
+.cta-hint {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.claude-result {
+  margin: 14px 0;
+}
+
+.claude-result:empty { display: none; }
+
+.claude-loading {
+  padding: 14px;
+  border: 2px dashed var(--mint-strong);
+  border-radius: 10px;
+  background: #f1fbf6;
+  color: var(--mint-strong);
+  font-weight: 800;
+  text-align: center;
+}
+
+.claude-error {
+  padding: 12px;
+  border-left: 4px solid var(--coral);
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.claude-result-head {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.claude-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.claude-badge.subtle {
+  background: var(--mint);
+  color: var(--mint-strong);
+}
+
+.template-plans {
+  margin-top: 12px;
+}
+
+.template-plans summary {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.template-plans[open] summary {
+  margin-bottom: 8px;
+}
+
 .plan-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
