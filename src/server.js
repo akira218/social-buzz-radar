@@ -91,6 +91,10 @@ async function handleApi(request, response, url) {
       });
       return;
     }
+    // 1トピックだけ生成（クオリティ・スピード優先）
+    const topicLimit = 1;
+    const selectedTrends = trends.slice(0, topicLimit);
+
     const context = {
       niche: body.niche || "",
       audience: body.audience || "",
@@ -100,9 +104,8 @@ async function handleApi(request, response, url) {
     // Claude APIキーが設定されていればLLM生成、失敗時はテンプレートにフォールバック
     if (isLLMEnabled()) {
       try {
-        // 最新のアルゴリズム情報を文章生成のコンテキストとして注入
         const algorithmContext = await getCurrentSummaryForContext();
-        const llmResult = await generateAllVariationsWithLLM(trends, context, algorithmContext);
+        const llmResult = await generateAllVariationsWithLLM(selectedTrends, context, algorithmContext);
         sendJson(response, 200, {
           generatedAt: new Date().toISOString(),
           context,
@@ -114,11 +117,10 @@ async function handleApi(request, response, url) {
         return;
       } catch (error) {
         console.error("Claude API failed, falling back to templates:", error.message);
-        // フォールスルー
       }
     }
 
-    const result = generateVariations(trends, context);
+    const result = generateVariations(selectedTrends, context);
     sendJson(response, 200, {
       generatedAt: new Date().toISOString(),
       context,

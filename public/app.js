@@ -293,42 +293,129 @@ function renderVariations(data) {
   container.replaceChildren();
   (data.variations || []).forEach((entry, index) => {
     const trend = entry.trend;
-    const variations = entry.variations;
+    const v = entry.variations;
     const card = document.createElement("article");
     card.className = "topic-card variation-card";
     card.innerHTML = `
       <div class="topic-head">
         <div>
-          <p class="rank">#${index + 1} / バリエーション</p>
-          <h2>${trend.title}</h2>
+          <p class="rank">#${index + 1} トピック</p>
+          <h2>${escapeHtml(trend.title)}</h2>
         </div>
       </div>
-      ${renderVariationGroup("note", variations.note, "note記事")}
-      ${renderVariationGroup("x", variations.x, "X投稿")}
-      ${renderVariationGroup("instagram", variations.instagram, "Instagram Reels")}
-      ${variations.tiktok ? renderVariationGroup("tiktok", variations.tiktok, "TikTok") : ""}
+      ${renderPlatformBlock("x", v.x)}
+      ${renderPlatformBlock("instagram", v.instagram)}
+      ${renderPlatformBlock("tiktok", v.tiktok)}
+      ${renderPlatformBlock("note", v.note)}
     `;
     container.appendChild(card);
   });
 }
 
+const PLATFORM_META = {
+  x: { name: "X", icon: "𝕏", color: "x" },
+  instagram: { name: "Instagram Reels", icon: "📷", color: "instagram" },
+  tiktok: { name: "TikTok", icon: "🎵", color: "tiktok" },
+  note: { name: "note 記事", icon: "📝", color: "note" }
+};
+
+function renderPlatformBlock(platform, item) {
+  if (!item) return "";
+  // 旧形式（配列）の場合は最初の要素を取る
+  if (Array.isArray(item)) {
+    if (!item.length) return "";
+    item = item[0];
+  }
+  const meta = PLATFORM_META[platform] || { name: platform, icon: "•", color: "default" };
+  const header = `
+    <header class="platform-header platform-bg-${meta.color}">
+      <span class="platform-icon">${meta.icon}</span>
+      <h3 class="platform-name">${meta.name}</h3>
+    </header>
+  `;
+  let body = "";
+  if (platform === "x") {
+    const len = (item.draft || "").length;
+    const lenBadge = `<span class="char-count ${len > 140 ? "over" : ""}">${len}/140字</span>`;
+    body = `
+      <div class="platform-body">
+        ${item.hook ? `<p class="x-hook">${escapeHtml(item.hook)}</p>` : ""}
+        <div class="x-draft-block">
+          <div class="x-draft-head">${lenBadge}</div>
+          <pre class="x-draft">${escapeHtml(item.draft || "")}</pre>
+        </div>
+        ${item.hashtags?.length ? `<p class="tags">${item.hashtags.map((t) => `#${escapeHtml(t)}`).join(" ")}</p>` : ""}
+      </div>
+    `;
+  } else if (platform === "note") {
+    const sections = (item.sections || []).map((s) => `
+      <section class="note-body-section">
+        <h4>${escapeHtml(s.heading || "")}</h4>
+        <p>${escapeHtml(s.body || "").replace(/\n/g, "<br>")}</p>
+      </section>
+    `).join("");
+    const totalChars = (item.lead || "").length + (item.sections || []).reduce((sum, s) => sum + (s.body || "").length, 0) + (item.conclusion || "").length;
+    body = `
+      <div class="platform-body note-article">
+        <p class="article-meta">記事全文 約${totalChars}字</p>
+        <h2 class="article-title">${escapeHtml(item.title || "")}</h2>
+        ${item.lead ? `<div class="article-lead"><p>${escapeHtml(item.lead).replace(/\n/g, "<br>")}</p></div>` : ""}
+        ${sections}
+        ${item.conclusion ? `<section class="note-body-section conclusion"><h4>まとめ</h4><p>${escapeHtml(item.conclusion).replace(/\n/g, "<br>")}</p></section>` : ""}
+      </div>
+    `;
+  } else {
+    // Instagram / TikTok
+    const beats = (item.beats || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+    body = `
+      <div class="platform-body reels-block">
+        ${item.hook ? `<p class="reels-hook-large"><strong>${escapeHtml(item.hook)}</strong></p>` : ""}
+        ${item.beats?.length ? `<div class="note-section"><span class="micro-label">構成（ビート別）</span><ul class="outline-list">${beats}</ul></div>` : ""}
+        ${item.caption ? `<div class="note-section"><span class="micro-label">キャプション</span><p>${escapeHtml(item.caption).replace(/\n/g, "<br>")}</p></div>` : ""}
+        ${item.hashtags?.length ? `<p class="tags">${item.hashtags.map((t) => `#${escapeHtml(t)}`).join(" ")}</p>` : ""}
+      </div>
+    `;
+  }
+  return `<div class="platform-block platform-frame-${meta.color}">${header}${body}</div>`;
+}
+
 function renderVariationGroup(platform, items, label) {
   if (!items || !items.length) return "";
   const list = items.map((item, i) => {
-    const body = item.draft
-      ? item.draft.replace(/\n/g, "<br>")
-      : item.title
-        ? `<strong>${item.title}</strong><br>${(item.outline || []).join("<br>")}${item.lead ? `<br><br>${item.lead}` : ""}`
-        : `<strong>${item.hook || ""}</strong><br>${(item.beats || []).join("<br>")}${item.caption ? `<br><br>${item.caption}` : ""}`;
+    let body;
+    if (item.draft) {
+      // X 投稿
+      body = `<p>${escapeHtml(item.draft).replace(/\n/g, "<br>")}</p>`;
+    } else if (item.title) {
+      // note 記事
+      const outline = (item.outline || []).map((o) => `<li>${escapeHtml(o)}</li>`).join("");
+      const bodyExcerpt = item.body_excerpt
+        ? `<details class="body-excerpt"><summary>記事冒頭の本文サンプル（${item.body_excerpt.length}字）</summary><p>${escapeHtml(item.body_excerpt).replace(/\n/g, "<br>")}</p></details>`
+        : "";
+      body = `
+        <p class="note-title"><strong>${escapeHtml(item.title)}</strong></p>
+        ${item.outline?.length ? `<div class="note-section"><span class="micro-label">アウトライン</span><ul class="outline-list">${outline}</ul></div>` : ""}
+        ${item.lead ? `<div class="note-section"><span class="micro-label">リード文</span><p>${escapeHtml(item.lead).replace(/\n/g, "<br>")}</p></div>` : ""}
+        ${bodyExcerpt}
+      `;
+    } else {
+      // Instagram / TikTok
+      const beats = (item.beats || []).map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+      body = `
+        <p class="reels-hook"><strong>${escapeHtml(item.hook || "")}</strong></p>
+        ${item.beats?.length ? `<div class="note-section"><span class="micro-label">構成（ビート別）</span><ul class="outline-list">${beats}</ul></div>` : ""}
+        ${item.caption ? `<div class="note-section"><span class="micro-label">キャプション</span><p>${escapeHtml(item.caption).replace(/\n/g, "<br>")}</p></div>` : ""}
+      `;
+    }
     const headerHook = item.hook || item.title || `案${i + 1}`;
     const headerLabel = item.angle ? `${item.angle}: ${headerHook}` : `案${i + 1}: ${headerHook}`;
     const tags = item.hashtags && item.hashtags.length
-      ? `<p class="tags">${item.hashtags.map((t) => `#${t}`).join(" ")}</p>`
+      ? `<p class="tags">${item.hashtags.map((t) => `#${escapeHtml(t)}`).join(" ")}</p>`
       : "";
     return `
       <details class="variation-item" ${i === 0 ? "open" : ""}>
-        <summary>${headerLabel}</summary>
-        <p>${body}</p>
+        <summary>${escapeHtml(headerLabel)}</summary>
+        ${body}
         ${tags}
       </details>
     `;

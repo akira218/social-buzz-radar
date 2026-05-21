@@ -339,6 +339,173 @@ h1 {
 .platform-tiktok { background: #000; color: #25f4ee; }
 .platform-note { background: #41c9b4; color: #fff; }
 
+/* ===== 媒体別ブロック（バリエーション生成結果用） ===== */
+.platform-block {
+  margin: 18px 0;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.platform-frame-x { border-color: #1a1a1a; }
+.platform-frame-instagram { border-color: #dd2a7b; }
+.platform-frame-tiktok { border-color: #25f4ee; }
+.platform-frame-note { border-color: #41c9b4; }
+
+.platform-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+}
+
+.platform-bg-x { background: #1a1a1a; color: #fff; }
+.platform-bg-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b 50%, #8134af); color: #fff; }
+.platform-bg-tiktok { background: #000; color: #25f4ee; border-bottom: 2px solid #ff0050; }
+.platform-bg-note { background: #41c9b4; color: #fff; }
+
+.platform-icon {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 28px;
+}
+
+.platform-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.platform-body {
+  padding: 18px;
+  background: var(--panel);
+}
+
+/* X 専用 */
+.x-hook {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.x-draft-block {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.x-draft-head {
+  margin-bottom: 8px;
+}
+
+.char-count {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e8f5ee;
+  color: var(--mint-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.char-count.over {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.x-draft {
+  margin: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* note 記事全文表示 */
+.note-article {
+  padding: 24px;
+}
+
+.article-meta {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.article-title {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.article-lead {
+  margin: 0 0 20px;
+  padding: 14px;
+  border-left: 4px solid #41c9b4;
+  background: #f1fbf6;
+  border-radius: 6px;
+  color: #38403c;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.note-body-section {
+  margin: 20px 0;
+}
+
+.note-body-section h4 {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #41c9b4;
+  color: var(--ink);
+  font-size: 17px;
+}
+
+.note-body-section p {
+  margin: 8px 0;
+  color: #38403c;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.note-body-section.conclusion h4 {
+  border-bottom-color: var(--coral);
+}
+
+/* Reels / TikTok */
+.reels-hook-large {
+  margin: 0 0 14px;
+  padding: 12px;
+  border-left: 4px solid var(--mint-strong);
+  background: #f1fbf6;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.reels-block .note-section p {
+  margin: 4px 0 0;
+  color: #38403c;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .change-desc {
   margin: 0 0 8px;
   color: #38403c;
@@ -719,6 +886,64 @@ summary {
   color: var(--mint-strong);
   font-size: 10px;
   text-transform: none;
+}
+
+.micro-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f6f8f7;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.note-section {
+  margin: 10px 0;
+}
+
+.outline-list {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  color: #38403c;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.outline-list li {
+  margin: 2px 0;
+}
+
+.note-title,
+.reels-hook {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.body-excerpt {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--mint-strong);
+  background: #f1fbf6;
+  border-radius: 6px;
+}
+
+.body-excerpt summary {
+  color: var(--mint-strong);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.body-excerpt p {
+  margin: 8px 0 0;
+  color: #38403c;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .variation-item {
