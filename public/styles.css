@@ -554,6 +554,22 @@ legend {
   font-weight: 700;
 }
 
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+.field-hint strong {
+  color: var(--mint-strong);
+  font-weight: 700;
+}
+
 input,
 textarea {
   width: 100%;

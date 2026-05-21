@@ -45,24 +45,29 @@
     <main class="layout">
       <section class="control-panel" aria-label="分析条件">
         <label>
-          領域
+          あなたの発信ジャンル
+          <span class="field-hint">あなたが発信している領域。<strong>関係ない話題を除外</strong>するフィルターと、Claudeが書く<strong>文章の専門性</strong>に反映されます。<br>例: 「AIアバター、SNSマーケティング」</span>
           <input id="niche" value="AIアバター、SNSマーケティング、クリエイター支援">
         </label>
         <label>
-          読者
+          届けたい相手（読者）
+          <span class="field-hint">想定する読み手。Claude生成時の<strong>説明レベル・選ぶ言葉・切り口</strong>が変わります。<br>例: 「経営者」なら経営判断目線、「クリエイター」なら制作現場目線</span>
           <input id="audience" value="経営者、マーケ担当、クリエイター">
         </label>
         <label>
-          立場
+          投稿のトーン・スタンス
+          <span class="field-hint">どんな姿勢で発信するか。文章の<strong>語気・トーン・方向性</strong>に反映されます。<br>例: 「公式情報を根拠に、煽らない」「率直に、現場視点で」</span>
           <textarea id="brandStance" rows="2">公式情報を根拠に、実務で使える形まで落とし込む</textarea>
         </label>
         <label>
-          絞り込み
+          含めたいキーワード（任意）
+          <span class="field-hint">この語を含む話題だけに絞り込みます。空欄なら絞り込みなし。<br>例: 「生成AI 法務 採用」</span>
           <input id="query" placeholder="例: 生成AI 法務 採用">
         </label>
 
         <fieldset>
           <legend>投稿面（生成対象）</legend>
+          <span class="field-hint">チェックした媒体だけ表示・生成されます。</span>
           <label class="check"><input type="checkbox" value="note" checked> note</label>
           <label class="check"><input type="checkbox" value="x" checked> X</label>
           <label class="check"><input type="checkbox" value="instagram" checked> Instagram</label>
@@ -71,12 +76,14 @@
 
         <fieldset>
           <legend>絞り込みオプション</legend>
-          <label class="check"><input type="checkbox" id="nicheFilter" checked> 領域フィルター（無関係な話題を除外）</label>
+          <label class="check"><input type="checkbox" id="nicheFilter" checked> 領域フィルターを使う</label>
+          <span class="field-hint">ONにすると、「あなたの発信ジャンル」と一切関係ない話題（例: スポーツニュース、芸能ニュース）が結果から除外されます。</span>
         </fieldset>
 
         <label>
-          手入力トレンド
-          <textarea id="manualTrends" rows="6" placeholder="1行1トピック。topic | source | url 形式も可"></textarea>
+          自分で追加したい話題（任意）
+          <span class="field-hint">気になる話題を自分で書き加える欄。1行1トピック。ここに入れた話題は<strong>必ず結果の最上位に表示</strong>されます。</span>
+          <textarea id="manualTrends" rows="6" placeholder="例: OpenAI上場&#10;Apple Intelligence発表"></textarea>
         </label>
 
         <div class="actions">
