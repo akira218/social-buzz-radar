@@ -303,32 +303,39 @@ function renderVariations(data) {
           <h2>${trend.title}</h2>
         </div>
       </div>
-      ${renderVariationGroup("note", variations.note, "記事構成")}
+      ${renderVariationGroup("note", variations.note, "note記事")}
       ${renderVariationGroup("x", variations.x, "X投稿")}
-      ${renderVariationGroup("instagram", variations.instagram, "Reels台本")}
+      ${renderVariationGroup("instagram", variations.instagram, "Instagram Reels")}
+      ${variations.tiktok ? renderVariationGroup("tiktok", variations.tiktok, "TikTok") : ""}
     `;
     container.appendChild(card);
   });
 }
 
 function renderVariationGroup(platform, items, label) {
+  if (!items || !items.length) return "";
   const list = items.map((item, i) => {
     const body = item.draft
       ? item.draft.replace(/\n/g, "<br>")
       : item.title
         ? `<strong>${item.title}</strong><br>${(item.outline || []).join("<br>")}${item.lead ? `<br><br>${item.lead}` : ""}`
-        : `<strong>${item.hook}</strong><br>${(item.beats || []).join("<br>")}${item.caption ? `<br><br>${item.caption}` : ""}`;
+        : `<strong>${item.hook || ""}</strong><br>${(item.beats || []).join("<br>")}${item.caption ? `<br><br>${item.caption}` : ""}`;
+    const headerHook = item.hook || item.title || `案${i + 1}`;
+    const headerLabel = item.angle ? `${item.angle}: ${headerHook}` : `案${i + 1}: ${headerHook}`;
+    const tags = item.hashtags && item.hashtags.length
+      ? `<p class="tags">${item.hashtags.map((t) => `#${t}`).join(" ")}</p>`
+      : "";
     return `
       <details class="variation-item" ${i === 0 ? "open" : ""}>
-        <summary>${item.angle}${item.hook ? `: ${item.hook}` : ""}</summary>
+        <summary>${headerLabel}</summary>
         <p>${body}</p>
-        ${item.hashtags ? `<p class="tags">${item.hashtags.join(" ")}</p>` : ""}
+        ${tags}
       </details>
     `;
   }).join("");
   return `
     <section class="variation-platform">
-      <h3>${label}</h3>
+      <h3>${label} <span class="count-badge">${items.length}案</span></h3>
       ${list}
     </section>
   `;

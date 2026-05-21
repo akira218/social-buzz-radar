@@ -701,12 +701,24 @@ summary {
 }
 
 .variation-platform h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 10px;
   color: var(--mint-strong);
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.count-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--mint-strong);
+  font-size: 10px;
+  text-transform: none;
 }
 
 .variation-item {

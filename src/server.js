@@ -107,7 +107,7 @@ async function handleApi(request, response, url) {
           generatedAt: new Date().toISOString(),
           context,
           variations: llmResult.results,
-          engine: "claude-sonnet-4-6",
+          engine: "claude-haiku-4-5",
           usage: llmResult.usage,
           algorithmContextUsed: Boolean(algorithmContext)
         });

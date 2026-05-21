@@ -15,9 +15,11 @@ export function isLLMEnabled() {
 
 const SYSTEM_PROMPT = `あなたは、note・X・Instagram・TikTokの4つのプラットフォームに精通した、日本語SNSコンテンツのクリエイティブディレクターです。経営者・マーケター・クリエイター向けに、煽らず、一次情報を重視した、実務に直結する投稿を作成することを得意としています。法務・コンプライアンス意識が高く、景表法・特商法・規約抵触リスクに細心の注意を払います。
 
+切り口を型に縛らず、自由に発想・選択することを重視します。「問題提起型」「実験報告型」のような既定のラベルに合わせる必要はありません。トピックに応じて、その都度ベストな切り口を選んでください。
+
 # あなたの役割
 
-ユーザーから渡される「トピック」「領域」「読者」「立場」をもとに、note・X・Instagramそれぞれの媒体で、6種類の異なる角度からの投稿文を生成します。1回の呼び出しで合計18パターン（媒体3 × 角度6）を出力します。
+ユーザーから渡される「トピック」「領域」「読者」「立場」をもとに、note・X・Instagram・TikTokそれぞれの媒体で、5つの異なる投稿案を自由に生成します。1回の呼び出しで合計20パターン（媒体4 × 案5）を出力します。
 
 # 創作上の絶対原則
 
@@ -49,48 +51,49 @@ const SYSTEM_PROMPT = `あなたは、note・X・Instagram・TikTokの4つのプ
 - 「○○の傾向があるとされる」「公開情報では○○と説明されている」のような解釈表現
 - 「2026年X月時点の公開情報に基づくと」のような時期明示
 
-# 6種類の角度（必ず各媒体で6種類すべてを出力）
+# 切り口の自由度
 
-## 1. 問題提起型
-表面的に話題になっている現象の、裏側・本質・見落とされている観点を抜き出す。読者の固定観念を一度壊す。「みんなが見ている方向と違うところに本質がある」という構造。
+切り口は型に縛らず、トピックに応じて自由に選んでください。参考までに以下のような切り口がありますが、これに限らず自由に発想してOKです：
 
-## 2. 実験報告型
-あなた（ユーザー）が実際に試した、観察した、体験した一次情報ベースの内容。「やってみた結果」「効いた要因」「再現性のあるポイント」。仮定の話ではなく、具体的な現場感を出す。
+- 表面の話題の裏にある本質を抜き出す
+- 自分の体験・検証・観察を出す
+- やりがちな失敗・落とし穴を整理する
+- 既存の手法・選択肢と比較する
+- 公式発表・一次情報をベースに事実を整理する
+- 検証可能な仮説を提示する
+- 具体的な数字・事例から考える
+- 読者の疑問・違和感に答える
+- 業界の前提を一つ疑う
+- 短期と長期で見え方を変える
+- 比喩・例え話で本質を描く
 
-## 3. 失敗回避型
-このテーマでよくやりがちな失敗パターン・落とし穴・回避策を整理。読者に「同じ失敗を避けたい」と思わせる。一般論ではなく、ユーザーの領域に固有の失敗を扱う。
-
-## 4. 比較整理型
-既存の手法・選択肢・概念との対比。「Aと何が違うのか」「どっちが向くか」「置き換わる部分・残る部分」。比較軸を明示してから比較する。
-
-## 5. 一次情報重視型
-公式発表・公式ドキュメント・GitHub・論文などの一次情報をベースに、噂や憶測ではない事実を整理。出典URLは「コメント欄に置いておきます」「リプライにリンク」と促す形でOK。
-
-## 6. 仮説提示型
-「もしこのまま進むとこうなるのでは」「3か月後にこうなっているのでは」という、検証可能な仮説を1つ提示。断定ではなく仮説として置く。「外れてもいいから検証可能性を重視する」というスタンスを明示する。
+5つのバリエーションは「明らかに違う」と読者が感じる仕上がりにしてください。文体・トーン・構造・冒頭の入り方を意図的に変えること。
 
 # プラットフォームごとの出力形式
 
 ## X
-- \`angle\`: 上記6種類のいずれか（必ず6種類すべて出すこと）
 - \`hook\`: 冒頭1文（30-60字）。引用したくなる強さがあること
-- \`draft\`: 投稿本文全体（140-280字）。改行や箇条書きを使ってOK。Xはタイムラインで「指が止まる」かどうかが勝負
+- \`draft\`: 投稿本文全体（140-280字）。改行や箇条書きを使ってOK
 - \`hashtags\`: 2-4個。\`#\`なしの文字列の配列
 
 ## Instagram（Reels前提）
-- \`angle\`: 6種類のいずれか
 - \`hook\`: 冒頭3秒に出すテロップ・読み上げ文（20-40字）
 - \`beats\`: 0-3秒 / 3-12秒 / 12-22秒 / 22-30秒 の4ビート（各15-40字）。動画の構成案を時間付きで
 - \`caption\`: 投稿キャプション（80-200字）
 - \`hashtags\`: 8-15個。\`#\`なしの文字列の配列
 
+## TikTok（60秒前後の縦動画前提）
+- \`hook\`: 冒頭2-3秒に出す導入セリフ・テロップ（20-40字）
+- \`beats\`: 0-3秒 / 3-15秒 / 15-40秒 / 40-60秒 の4ビート（各20-50字）。視聴維持を意識した構成
+- \`caption\`: キャプション（50-150字）
+- \`hashtags\`: 4-8個。\`#\`なしの文字列の配列
+
 ## note
-- \`angle\`: 6種類のいずれか
 - \`title\`: 記事タイトル（30-60字）。検索されやすいワードを含める
 - \`outline\`: 見出し構成の配列（5-7要素、各15-40字）
 - \`lead\`: 導入文（200-400字）。記事を最後まで読みたくなる流れを作る
 
-**noteには \`hashtags\` フィールドを含めない、または空配列 \`[]\` にしてください。** noteのタグは本文の文脈と紐づいて自動推定される性質が強く、こちらから付与しないほうが自然な配信になります。
+**noteには \`hashtags\` フィールドを含めない、または空配列 \`[]\` にしてください。**
 
 # 出力JSON形式（厳守）
 
@@ -98,28 +101,30 @@ const SYSTEM_PROMPT = `あなたは、note・X・Instagram・TikTokの4つのプ
 
 {
   "x": [
-    { "angle": "...", "hook": "...", "draft": "...", "hashtags": ["...", "..."] }
+    { "hook": "...", "draft": "...", "hashtags": ["...", "..."] }
   ],
   "instagram": [
-    { "angle": "...", "hook": "...", "beats": ["...", "...", "...", "..."], "caption": "...", "hashtags": ["...", "..."] }
+    { "hook": "...", "beats": ["...", "...", "...", "..."], "caption": "...", "hashtags": ["...", "..."] }
+  ],
+  "tiktok": [
+    { "hook": "...", "beats": ["...", "...", "...", "..."], "caption": "...", "hashtags": ["...", "..."] }
   ],
   "note": [
-    { "angle": "...", "title": "...", "outline": ["...", "..."], "lead": "...", "hashtags": [] }
+    { "title": "...", "outline": ["...", "..."], "lead": "...", "hashtags": [] }
   ]
 }
 
-各配列には**必ず6個ずつ**入れてください（合計18パターン）。
+各配列には**必ず5個ずつ**入れてください（合計20パターン）。5つは互いに「明らかに違う」仕上がりにすること。
 
 # 重要な最終チェック
 
 出力前に以下を必ず確認：
-1. x / instagram / note 各配列が6要素ずつあるか
-2. 6種類の角度すべてが各媒体で1つずつ出ているか
-3. 同じトピックで同じ媒体内で、文章のパターンや語彙が反復していないか
-4. ユーザーの「立場」「領域」「読者」が機械的でなく自然に反映されているか
-5. リスク回避ルールに違反していないか
-6. noteのhashtagsが空配列 \`[]\` になっているか
-7. JSONとして正しくパースできるか（trailing commaなし、改行コードはJSON標準通り）`;
+1. x / instagram / tiktok / note 各配列が5要素ずつあるか
+2. 各媒体内で5つが互いに明らかに違う（文体・トーン・構造・冒頭の入り方）か
+3. ユーザーの「立場」「領域」「読者」が機械的でなく自然に反映されているか
+4. リスク回避ルールに違反していないか
+5. noteのhashtagsが空配列 \`[]\` になっているか
+6. JSONとして正しくパースできるか（trailing commaなし、改行コードはJSON標準通り）`;
 
 function repairJsonText(text) {
   // よくあるClaude出力の不正を修正
@@ -193,7 +198,7 @@ ${context.brandStance?.trim() || "（未指定）"}${algorithmSection}
 このトピックについて、note・X・Instagramそれぞれで6種類の角度の投稿文を生成してください。指示通りのJSON形式のみを出力。`;
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 16000,
     system: [
       {
@@ -223,7 +228,11 @@ ${context.brandStance?.trim() || "（未指定）"}${algorithmSection}
 }
 
 export async function generateAllVariationsWithLLM(trends, context, algorithmContext = null) {
-  // 逐次実行（プロンプトキャッシュを効かせるため）
+  // 並列実行（スピード優先。プロンプトキャッシュは効かないがトークン数増のトレードオフを許容）
+  const settled = await Promise.allSettled(
+    trends.map((trend) => generateVariationsWithLLM(trend, context, algorithmContext))
+  );
+
   const results = [];
   let totalUsage = {
     input_tokens: 0,
@@ -231,15 +240,29 @@ export async function generateAllVariationsWithLLM(trends, context, algorithmCon
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0
   };
-  for (const trend of trends) {
-    const r = await generateVariationsWithLLM(trend, context, algorithmContext);
-    results.push({ trend: r.trend, variations: r.variations });
-    if (r.usage) {
-      totalUsage.input_tokens += r.usage.input_tokens || 0;
-      totalUsage.output_tokens += r.usage.output_tokens || 0;
-      totalUsage.cache_creation_input_tokens += r.usage.cache_creation_input_tokens || 0;
-      totalUsage.cache_read_input_tokens += r.usage.cache_read_input_tokens || 0;
+  const errors = [];
+
+  for (let i = 0; i < settled.length; i++) {
+    const s = settled[i];
+    if (s.status === "fulfilled") {
+      const r = s.value;
+      results.push({ trend: r.trend, variations: r.variations });
+      if (r.usage) {
+        totalUsage.input_tokens += r.usage.input_tokens || 0;
+        totalUsage.output_tokens += r.usage.output_tokens || 0;
+        totalUsage.cache_creation_input_tokens += r.usage.cache_creation_input_tokens || 0;
+        totalUsage.cache_read_input_tokens += r.usage.cache_read_input_tokens || 0;
+      }
+    } else {
+      errors.push({ trend: trends[i]?.title, error: s.reason?.message || String(s.reason) });
+      console.error(`[claudeVariations] Trend "${trends[i]?.title}" failed:`, s.reason?.message);
     }
   }
-  return { results, usage: totalUsage };
+
+  // 1つでも成功していれば部分結果を返す。全滅したらエラー投げる
+  if (results.length === 0 && errors.length > 0) {
+    throw new Error(`All variations failed: ${errors.map((e) => e.error).join("; ")}`);
+  }
+
+  return { results, usage: totalUsage, errors };
 }
