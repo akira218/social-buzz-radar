@@ -8,29 +8,43 @@ const SOURCES = [
     platform: "x",
     label: "X (xAI公式)",
     urls: [
-      { name: "x-algorithm README", url: "https://raw.githubusercontent.com/xai-org/x-algorithm/main/README.md" },
+      { name: "x-algorithm README (旧twitter)", url: "https://raw.githubusercontent.com/twitter/the-algorithm/main/README.md" },
+      { name: "xAI x-algorithm README", url: "https://raw.githubusercontent.com/xai-org/x-algorithm/main/README.md" },
       { name: "Phoenix README", url: "https://raw.githubusercontent.com/xai-org/x-algorithm/main/phoenix/README.md" }
     ]
   },
   {
     platform: "instagram",
-    label: "Instagram (Meta公式)",
+    label: "Instagram (Meta公式 + Mosseri氏発信)",
     urls: [
       { name: "Feed Ranking System Card", url: "https://ai.meta.com/tools/system-cards/instagram-feed-ranking/" },
-      { name: "Explore Engineering", url: "https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/" }
+      { name: "Explore Engineering", url: "https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/" },
+      { name: "Creators公式 (Mosseri氏発信ハブ)", url: "https://creators.instagram.com/" },
+      { name: "Instagram Ranking Explained (Mosseri公式記事)", url: "https://about.instagram.com/blog/announcements/instagram-ranking-explained" }
+    ]
+  },
+  {
+    platform: "tiktok",
+    label: "TikTok (公式)",
+    urls: [
+      { name: "TikTok Newsroom", url: "https://newsroom.tiktok.com/en-us" },
+      { name: "Creative Center インスピレーション", url: "https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en" },
+      { name: "How TikTok Recommends Content", url: "https://newsroom.tiktok.com/en-us/how-tiktok-recommends-content" }
     ]
   },
   {
     platform: "note",
-    label: "note公式",
+    label: "note (公式)",
     urls: [
       { name: "レコメンド刷新発表", url: "https://note.jp/n/nce2c203cc6fb" },
-      { name: "システム設計", url: "https://note.jp/n/nce0a239e3c40" }
+      { name: "システム設計", url: "https://note.jp/n/nce0a239e3c40" },
+      { name: "舞台裏記事", url: "https://note.jp/n/nf016d2c0bc2f" }
     ]
   }
 ];
 
 const CACHE_PATH = "data/algorithm-summary.json";
+const SNAPSHOT_DIR = "data/algorithm-snapshots";
 const CHECK_INTERVAL_HOURS = 24;
 const FETCH_TIMEOUT_MS = 15000;
 
@@ -101,43 +115,105 @@ async function loadStaticAnalysis() {
   }
 }
 
-const SUMMARY_SYSTEM_PROMPT = `あなたは、SNSアルゴリズム研究の専門家です。X (xAI)、Instagram (Meta)、note各社の公式ドキュメントを読み、SNSコンテンツ作成者が今知るべき「実務に効く要点」を抜き出す役割を担います。
+const SUMMARY_SYSTEM_PROMPT = `あなたは、SNSアルゴリズム研究の専門家で、上場準備中の企業のコンプライアンス文化に精通しています。X (xAI)、Instagram (Meta)、TikTok、note各社の公式ドキュメントを読み、SNSコンテンツ作成者が今知るべき「実務に効く要点」を抜き出す役割を担います。
 
 # あなたの仕事
-渡された複数の公式ソース（GitHub README、System Card、公式記事等）を読んで、各プラットフォームについて以下のJSON形式でまとめてください。
+渡された複数の公式ソース（GitHub README、System Card、公式発信、Newsroom等）を読んで、各プラットフォームについて指定のJSON形式でまとめます。
 
-# 重要な原則
-1. 一般論ではなく、ソースに書かれている具体的な内容を抜き出すこと
-2. 「投稿者が何を意識すべきか」という実務目線で要約
-3. 推測や脚色は一切入れない（書かれていないことは書かない）
-4. 専門用語は平易な日本語に置き換える（例: "Embedding" → "意味の特徴量"）
-5. 一つのプラットフォームにつき、要点は3-6個に絞る
+# 絶対遵守ルール（法務・コンプラ）
+
+## 1. 著作権・引用ルール
+- **15語超の逐語引用は絶対に避ける**（必ず自分の言葉に書き換える）
+- ソースの主張を要約・解釈する形にする
+- 一段落をそのままコピーすることは絶対NG
+
+## 2. 出典明記必須
+- 各要点には根拠となるソース名を内包させる
+- 例: "Mosseri氏が公開記事で言及している通り..." のように出典を文中に織り込む
+
+## 3. 時期の明示必須
+- 各プラットフォームの要約に「2026年X月時点」「直近の公式発信によれば」など時期表現を必ず含める
+- 「現時点の公開情報に基づく解釈」であることを明示
+
+## 4. 断定表現の禁止（景表法・優良誤認回避）
+- ❌「○○すれば必ず伸びる」「○○は確実に効果あり」「100%」「絶対」
+- ✅「○○の傾向があるとされる」「公式情報では○○と説明されている」「○○が重要視されているとされる」
+
+## 5. 規約抵触表現の禁止
+- ❌「アルゴリズム攻略」「抜け道」「裏技」「ハック」「グロースハック」
+- ✅「公開情報に基づく投稿設計」「公式仕様を踏まえた制作」
+
+## 6. 推測の禁止
+- 公式情報に書かれていないことは書かない
+- 「おそらく」「と思われる」が必要になったらその項目自体を出さない
 
 # 出力JSON形式
 
 {
   "x": {
-    "summary": "Xのランキングシステムの現在の全体像を3-5文で。",
+    "summary": "Xのランキングシステムの現在の全体像を3-5文で。必ず時期表現を含めること。",
     "key_points": [
-      "投稿者が意識すべき具体的なポイント1",
+      "公式情報に基づく投稿者が意識すべきポイント1（出典内包）",
       "ポイント2",
       "ポイント3-6"
     ],
     "what_to_avoid": [
-      "アルゴリズム的にマイナスになる行動1",
+      "公式・専門報告で指摘されているマイナス行動1",
       "行動2"
-    ]
+    ],
+    "as_of": "2026年X月時点"
   },
   "instagram": { ...同じ構造 },
+  "tiktok": { ...同じ構造 },
   "note": { ...同じ構造 }
 }
 
+# 注意
+- 説明文や前置きは一切不要
+- マークダウンのコードブロック記号は使わない
+- JSONのみを出力
+- 4プラットフォームすべて（x / instagram / tiktok / note）を必ず含める`;
+
+const CHANGE_DETECTION_SYSTEM_PROMPT = `あなたはSNSアルゴリズム変化の差分検知の専門家です。
+2つの時点で取得した公開情報の要約を比較し、「何が変わったか」「投稿戦略にどう影響するか」を整理します。
+
+# 絶対遵守ルール
+- 15語超の逐語引用は避ける
+- 断定表現を使わない（「〜の傾向がある」「〜と説明されている」）
+- 「攻略」「裏技」など規約抵触語を使わない
+- 公開情報に書かれていない推測は出さない
+- 変化が観察できない場合は素直に「明確な変化なし」と書く
+
+# 出力JSON形式
+
+{
+  "has_changes": true|false,
+  "period_label": "前回(2026-XX-XX)→今回(2026-XX-XX)",
+  "highlights": [
+    {
+      "platform": "x|instagram|tiktok|note",
+      "title": "変化の見出し（30字以内）",
+      "description": "公開情報の解釈として、何が変わったかを自分の言葉で。出典名を内包。100-200字。",
+      "implication": "投稿者として意識すべきこと（断定回避）。50-100字。"
+    }
+  ],
+  "no_change_platforms": ["変化が観察できなかったプラットフォーム名"]
+}
+
 説明文や前置きは一切不要です。JSONのみを出力してください。`;
+
+function extractJsonFromText(text) {
+  const trimmed = text.trim();
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const jsonText = fence ? fence[1] : trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
+  return JSON.parse(jsonText);
+}
 
 async function summarizeWithClaude(rawSources) {
   const client = getLlmClient();
   if (!client) throw new Error("ANTHROPIC_API_KEY is not set");
 
+  const today = new Date().toISOString().slice(0, 10);
   const userMessage = rawSources.map((src) => {
     const sections = src.contents
       .filter((c) => !c.error)
@@ -148,22 +224,63 @@ async function summarizeWithClaude(rawSources) {
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: [
       { type: "text", text: SUMMARY_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }
     ],
     messages: [
-      { role: "user", content: `以下の公式ソースを読んで、指定のJSON形式で要約してください。\n\n${userMessage}` }
+      { role: "user", content: `以下の公式ソースを読んで、指定のJSON形式で要約してください。今日の日付は ${today} です。各プラットフォームの \`as_of\` には現時点での年月を必ず含めてください。\n\n${userMessage}` }
     ]
   });
 
   const textBlock = response.content.find((b) => b.type === "text");
   if (!textBlock) throw new Error("No text response from Claude");
 
-  const trimmed = textBlock.text.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const jsonText = fence ? fence[1] : trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
-  return { summaries: JSON.parse(jsonText), usage: response.usage };
+  return { summaries: extractJsonFromText(textBlock.text), usage: response.usage };
+}
+
+async function detectChangesWithClaude(previousSummaries, currentSummaries, previousDate, currentDate) {
+  const client = getLlmClient();
+  if (!client) throw new Error("ANTHROPIC_API_KEY is not set");
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 3000,
+    system: [
+      { type: "text", text: CHANGE_DETECTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }
+    ],
+    messages: [
+      {
+        role: "user",
+        content: `# 前回 (${previousDate}) の要約\n\n${JSON.stringify(previousSummaries, null, 2)}\n\n# 今回 (${currentDate}) の要約\n\n${JSON.stringify(currentSummaries, null, 2)}\n\n上記2時点の要約を比較し、指定のJSON形式で差分をまとめてください。`
+      }
+    ]
+  });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock) return null;
+  try {
+    return extractJsonFromText(textBlock.text);
+  } catch {
+    return null;
+  }
+}
+
+async function loadPreviousSnapshot() {
+  try {
+    const files = await readFile(path.join(rootDir, CACHE_PATH), "utf8");
+    return JSON.parse(files);
+  } catch {
+    return null;
+  }
+}
+
+async function saveSnapshot(data) {
+  const dir = path.join(rootDir, SNAPSHOT_DIR);
+  await mkdir(dir, { recursive: true });
+  const timestamp = data.lastChecked.replace(/[:.]/g, "-");
+  const filePath = path.join(dir, `snapshot-${timestamp}.json`);
+  await writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
 }
 
 async function fetchAllSources() {
@@ -195,6 +312,9 @@ export async function getAlgorithmSummary({ force = false } = {}) {
 }
 
 export async function refreshAlgorithmSummary() {
+  // 前回のスナップショットを保存しておく（変化検知用）
+  const previousSnapshot = await loadPreviousSnapshot();
+
   const rawSources = await fetchAllSources();
   const sourceStatus = rawSources.map((r) => ({
     platform: r.platform,
@@ -229,16 +349,57 @@ export async function refreshAlgorithmSummary() {
     };
   }
 
+  // 変化検知（前回のスナップショットと比較）
+  let changes = null;
+  if (
+    process.env.ANTHROPIC_API_KEY &&
+    previousSnapshot &&
+    previousSnapshot.summaries &&
+    !previousSnapshot.summaries.static_markdown &&
+    !summaries.static_markdown
+  ) {
+    try {
+      const previousDate = previousSnapshot.lastChecked.slice(0, 10);
+      const currentDate = new Date().toISOString().slice(0, 10);
+      changes = await detectChangesWithClaude(
+        previousSnapshot.summaries,
+        summaries,
+        previousDate,
+        currentDate
+      );
+    } catch (error) {
+      console.error("[algorithm-tracker] 変化検知失敗:", error.message);
+    }
+  }
+
   const data = {
     lastChecked: new Date().toISOString(),
     engine,
     usage,
     sourceStatus,
-    summaries
+    summaries,
+    changes,
+    disclaimer: "本情報は各プラットフォームの公開情報（公式GitHub、System Card、公式発信、Newsroom等）の解釈です。各SNSのアルゴリズムは頻繁に更新されるため、投稿前に最新の公式情報も併せてご確認ください。"
   };
 
   await saveCache(data);
+  // スナップショット保存（変化追跡用）
+  try {
+    await saveSnapshot(data);
+  } catch (error) {
+    console.error("[algorithm-tracker] スナップショット保存失敗:", error.message);
+  }
   return data;
+}
+
+export async function getCurrentSummaryForContext() {
+  // 文章生成時にコンテキストとして使うため、簡潔な要約を返す
+  const cache = await loadCache();
+  if (!cache || !cache.summaries || cache.summaries.static_markdown) return null;
+  return {
+    asOf: cache.lastChecked,
+    summaries: cache.summaries
+  };
 }
 
 export function startAlgorithmTracking() {

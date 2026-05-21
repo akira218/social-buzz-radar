@@ -13,7 +13,7 @@ export function isLLMEnabled() {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-const SYSTEM_PROMPT = `あなたは、note・X・Instagramの3つのプラットフォームに精通した、日本語SNSコンテンツのクリエイティブディレクターです。経営者・マーケター・クリエイター向けに、煽らず、一次情報を重視した、実務に直結する投稿を作成することを得意としています。
+const SYSTEM_PROMPT = `あなたは、note・X・Instagram・TikTokの4つのプラットフォームに精通した、日本語SNSコンテンツのクリエイティブディレクターです。経営者・マーケター・クリエイター向けに、煽らず、一次情報を重視した、実務に直結する投稿を作成することを得意としています。法務・コンプライアンス意識が高く、景表法・特商法・規約抵触リスクに細心の注意を払います。
 
 # あなたの役割
 
@@ -35,13 +35,19 @@ const SYSTEM_PROMPT = `あなたは、note・X・Instagramの3つのプラット
 - **Instagram (Reels前提)**: 冒頭3秒のフック（音声OFFでも理解できる視覚情報）、保存価値、共有したくなる完成度。0-30秒で完結する4ビート構成。
 - **note**: 検索流入と内部回遊を意識した深掘り、一次情報の引用、体験ベースの厚みのある記述、SEO的な見出し設計。タイトルにはトピック語と検索意図ワードを含める。
 
-## 5. リスク回避（厳守）
+## 5. リスク回避（厳守・法務コンプラ重要）
 以下は絶対に含めない：
 - 医療効果・投資成果・選挙結果に関する断定
-- 「必ず儲かる」「絶対」「100%成功」などの誇張
+- 「必ず儲かる」「絶対」「100%成功」などの誇張（景表法・優良誤認リスク）
 - 「拡散希望」「相互フォロー」「いいねしてください」など規約違反的な誘導
 - 攻撃的・差別的・成人向けな表現
 - 競合・個人の名指しでの晒し・揶揄
+- 「アルゴリズム攻略」「裏技」「抜け道」「ハック」などの規約抵触語
+- 公開情報以外を出典のように装う表現
+
+代わりに：
+- 「○○の傾向があるとされる」「公開情報では○○と説明されている」のような解釈表現
+- 「2026年X月時点の公開情報に基づくと」のような時期明示
 
 # 6種類の角度（必ず各媒体で6種類すべてを出力）
 
@@ -115,16 +121,44 @@ const SYSTEM_PROMPT = `あなたは、note・X・Instagramの3つのプラット
 6. noteのhashtagsが空配列 \`[]\` になっているか
 7. JSONとして正しくパースできるか（trailing commaなし、改行コードはJSON標準通り）`;
 
+function repairJsonText(text) {
+  // よくあるClaude出力の不正を修正
+  let fixed = text;
+  // // 行コメントを除去（文字列内の // は保護のため、行頭付近のみ）
+  fixed = fixed.replace(/^\s*\/\/.*$/gm, "");
+  // /* ... */ ブロックコメント除去
+  fixed = fixed.replace(/\/\*[\s\S]*?\*\//g, "");
+  // trailing comma の除去
+  fixed = fixed.replace(/,(\s*[}\]])/g, "$1");
+  return fixed;
+}
+
 function extractJson(text) {
   const trimmed = text.trim();
   // ```json ... ``` ブロックを剥がす
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (fenceMatch) return JSON.parse(fenceMatch[1]);
-  // 最初の { から最後の } までを抜き出す（前後にテキストが混ざった場合のセーフティ）
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("JSON not found in response");
-  return JSON.parse(trimmed.slice(start, end + 1));
+  const candidate = fenceMatch ? fenceMatch[1] : (() => {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end === -1) throw new Error("JSON not found in response");
+    return trimmed.slice(start, end + 1);
+  })();
+  try {
+    return JSON.parse(candidate);
+  } catch (firstError) {
+    try {
+      // 不正修正リトライ
+      return JSON.parse(repairJsonText(candidate));
+    } catch (secondError) {
+      // デバッグ情報を残す
+      const errPos = (firstError.message.match(/position (\d+)/) || [])[1];
+      const context = errPos
+        ? candidate.slice(Math.max(0, parseInt(errPos) - 100), parseInt(errPos) + 100)
+        : "(no position info)";
+      console.error("[claudeVariations] JSON parse failed. Context around error:\n", context);
+      throw new Error(`JSON parse failed: ${firstError.message}`);
+    }
+  }
 }
 
 function ensureNoteHashtagsEmpty(variations) {
@@ -136,9 +170,13 @@ function ensureNoteHashtagsEmpty(variations) {
   return variations;
 }
 
-export async function generateVariationsWithLLM(trend, context) {
+export async function generateVariationsWithLLM(trend, context, algorithmContext = null) {
   const client = getClient();
   if (!client) throw new Error("ANTHROPIC_API_KEY is not set");
+
+  const algorithmSection = algorithmContext
+    ? `\n\n# 現在のアルゴリズム傾向（${algorithmContext.asOf?.slice(0, 10) || "最新"}時点の公開情報の解釈）\n以下は各プラットフォームの公開情報から要約した「現在重要視されているシグナル」です。投稿案の構成に活かしてください。ただし、本文中で「アルゴリズム的に...」のような表現は使わず、自然な投稿として仕上げること。\n\n${JSON.stringify(algorithmContext.summaries, null, 2).slice(0, 5000)}`
+    : "";
 
   const userMessage = `# 今回のトピック
 ${trend.title}
@@ -150,13 +188,13 @@ ${context.niche?.trim() || "（未指定）"}
 ${context.audience?.trim() || "（未指定）"}
 
 # あなたの立場・トーン
-${context.brandStance?.trim() || "（未指定）"}
+${context.brandStance?.trim() || "（未指定）"}${algorithmSection}
 
 このトピックについて、note・X・Instagramそれぞれで6種類の角度の投稿文を生成してください。指示通りのJSON形式のみを出力。`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 8000,
+    max_tokens: 16000,
     system: [
       {
         type: "text",
@@ -166,6 +204,10 @@ ${context.brandStance?.trim() || "（未指定）"}
     ],
     messages: [{ role: "user", content: userMessage }]
   });
+
+  if (response.stop_reason === "max_tokens") {
+    console.warn("[claudeVariations] Response hit max_tokens, output may be truncated");
+  }
 
   const textBlock = response.content.find((b) => b.type === "text");
   if (!textBlock) throw new Error("No text response from Claude");
@@ -180,7 +222,7 @@ ${context.brandStance?.trim() || "（未指定）"}
   };
 }
 
-export async function generateAllVariationsWithLLM(trends, context) {
+export async function generateAllVariationsWithLLM(trends, context, algorithmContext = null) {
   // 逐次実行（プロンプトキャッシュを効かせるため）
   const results = [];
   let totalUsage = {
@@ -190,7 +232,7 @@ export async function generateAllVariationsWithLLM(trends, context) {
     cache_read_input_tokens: 0
   };
   for (const trend of trends) {
-    const r = await generateVariationsWithLLM(trend, context);
+    const r = await generateVariationsWithLLM(trend, context, algorithmContext);
     results.push({ trend: r.trend, variations: r.variations });
     if (r.usage) {
       totalUsage.input_tokens += r.usage.input_tokens || 0;

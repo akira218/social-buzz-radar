@@ -6,7 +6,7 @@ import { collectTrends } from "./lib/trendSources.js";
 import { scoreTrends } from "./lib/scoring.js";
 import { buildContentPlans, generateVariations } from "./lib/contentPlanner.js";
 import { isLLMEnabled, generateAllVariationsWithLLM } from "./lib/claudeVariations.js";
-import { getAlgorithmSummary, refreshAlgorithmSummary, startAlgorithmTracking } from "./lib/algorithmTracker.js";
+import { getAlgorithmSummary, refreshAlgorithmSummary, startAlgorithmTracking, getCurrentSummaryForContext } from "./lib/algorithmTracker.js";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = path.join(rootDir, "public");
@@ -100,13 +100,16 @@ async function handleApi(request, response, url) {
     // Claude APIキーが設定されていればLLM生成、失敗時はテンプレートにフォールバック
     if (isLLMEnabled()) {
       try {
-        const llmResult = await generateAllVariationsWithLLM(trends, context);
+        // 最新のアルゴリズム情報を文章生成のコンテキストとして注入
+        const algorithmContext = await getCurrentSummaryForContext();
+        const llmResult = await generateAllVariationsWithLLM(trends, context, algorithmContext);
         sendJson(response, 200, {
           generatedAt: new Date().toISOString(),
           context,
           variations: llmResult.results,
           engine: "claude-sonnet-4-6",
-          usage: llmResult.usage
+          usage: llmResult.usage,
+          algorithmContextUsed: Boolean(algorithmContext)
         });
         return;
       } catch (error) {

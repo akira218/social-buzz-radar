@@ -354,8 +354,17 @@ if (refreshIntervalSelect) {
 
 const algorithmState = {
   data: null,
-  currentTab: "x"
+  currentTab: "changes"
 };
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function formatDateTime(iso) {
   if (!iso) return "-";
@@ -366,6 +375,108 @@ function formatDateTime(iso) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(iso));
+}
+
+function renderChangesTab(data, body) {
+  const changes = data.changes;
+  if (!changes) {
+    body.innerHTML = `
+      <div class="algorithm-section">
+        <p class="hint">変化検知は2回目以降の取得から有効になります。「今すぐ再確認」を押すと、前回保存された要約との差分が次回から表示されます。</p>
+      </div>
+    `;
+    return;
+  }
+
+  const hasChanges = changes.has_changes && (changes.highlights || []).length > 0;
+  const noChange = changes.no_change_platforms || [];
+
+  body.innerHTML = `
+    <div class="algorithm-section">
+      <p class="changes-period">${escapeHtml(changes.period_label || "")}</p>
+    </div>
+    ${hasChanges ? `
+      <div class="algorithm-section">
+        <h3>注目すべき変化</h3>
+        <div class="changes-list">
+          ${changes.highlights.map((h) => `
+            <article class="change-item">
+              <div class="change-head">
+                <span class="platform-pill platform-${escapeHtml(h.platform)}">${escapeHtml(h.platform).toUpperCase()}</span>
+                <h4>${escapeHtml(h.title)}</h4>
+              </div>
+              <p class="change-desc">${escapeHtml(h.description)}</p>
+              ${h.implication ? `<p class="change-impl">投稿者として意識すること: ${escapeHtml(h.implication)}</p>` : ""}
+            </article>
+          `).join("")}
+        </div>
+      </div>
+    ` : `
+      <div class="algorithm-section">
+        <p>${changes.has_changes ? "" : "前回取得時点から、公開情報の明確な変化は観察されていません。"}</p>
+      </div>
+    `}
+    ${noChange.length ? `
+      <div class="algorithm-section">
+        <p class="hint">変化が観察されなかったプラットフォーム: ${noChange.map((p) => escapeHtml(p)).join(", ")}</p>
+      </div>
+    ` : ""}
+    <div class="algorithm-section">
+      <p class="disclaimer">${escapeHtml(data.disclaimer || "")}</p>
+    </div>
+  `;
+}
+
+function renderPlatformTab(data, platform, body) {
+  const summaries = data.summaries || {};
+  const summary = summaries[platform];
+  if (!summary) {
+    body.innerHTML = `
+      <div class="algorithm-section">
+        <p class="hint">${escapeHtml(platform)} の情報はまだ取得されていません。「今すぐ再確認」を押してください。Claude APIキーが設定されていれば公式ソースから要約します。</p>
+      </div>
+    `;
+    return;
+  }
+
+  const sources = (data.sourceStatus || [])
+    .find((s) => s.platform === platform)?.urls || [];
+
+  body.innerHTML = `
+    <div class="algorithm-section">
+      <div class="as-of">${escapeHtml(summary.as_of || "")}</div>
+      <h3>全体像</h3>
+      <p class="algorithm-summary">${escapeHtml(summary.summary || "")}</p>
+    </div>
+    <div class="algorithm-section">
+      <h3>投稿時に意識すべきポイント</h3>
+      <ul class="algorithm-list">
+        ${(summary.key_points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}
+      </ul>
+    </div>
+    ${summary.what_to_avoid?.length ? `
+      <div class="algorithm-section">
+        <h3>避けるべき行動</h3>
+        <ul class="algorithm-list warn">
+          ${summary.what_to_avoid.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}
+        </ul>
+      </div>
+    ` : ""}
+    <div class="algorithm-section">
+      <h3>情報源</h3>
+      <ul class="algorithm-sources">
+        ${sources.map((s) => `
+          <li>
+            <span class="source-status ${escapeHtml(s.status)}">${s.status === "ok" ? "✓" : "✗"}</span>
+            <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.name)}</a>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
+    <div class="algorithm-section">
+      <p class="disclaimer">${escapeHtml(data.disclaimer || "")}</p>
+    </div>
+  `;
 }
 
 function renderAlgorithmTab() {
@@ -382,8 +493,7 @@ function renderAlgorithmTab() {
 
   // staticフォールバック（APIキー未設定時）
   if (summaries.static_markdown) {
-    const escaped = summaries.static_markdown
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const escaped = escapeHtml(summaries.static_markdown);
     body.innerHTML = `
       <div class="algorithm-static">
         <p class="hint">Claude APIキー未設定のため、ローカルの分析ファイルを表示しています。APIキーを設定すると公式情報の最新版が自動取得されます。</p>
@@ -393,46 +503,12 @@ function renderAlgorithmTab() {
     return;
   }
 
-  const summary = summaries[platform];
-  if (!summary) {
-    body.innerHTML = `<p>${platform} の情報がありません。</p>`;
+  if (platform === "changes") {
+    renderChangesTab(data, body);
     return;
   }
 
-  const sources = (data.sourceStatus || [])
-    .find((s) => s.platform === platform)?.urls || [];
-
-  body.innerHTML = `
-    <div class="algorithm-section">
-      <h3>全体像</h3>
-      <p class="algorithm-summary">${summary.summary || ""}</p>
-    </div>
-    <div class="algorithm-section">
-      <h3>投稿時に意識すべきポイント</h3>
-      <ul class="algorithm-list">
-        ${(summary.key_points || []).map((p) => `<li>${p}</li>`).join("")}
-      </ul>
-    </div>
-    ${summary.what_to_avoid?.length ? `
-      <div class="algorithm-section">
-        <h3>避けるべき行動</h3>
-        <ul class="algorithm-list warn">
-          ${summary.what_to_avoid.map((p) => `<li>${p}</li>`).join("")}
-        </ul>
-      </div>
-    ` : ""}
-    <div class="algorithm-section">
-      <h3>情報源</h3>
-      <ul class="algorithm-sources">
-        ${sources.map((s) => `
-          <li>
-            <span class="source-status ${s.status}">${s.status === "ok" ? "✓" : "✗"}</span>
-            <a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>
-          </li>
-        `).join("")}
-      </ul>
-    </div>
-  `;
+  renderPlatformTab(data, platform, body);
 }
 
 async function loadAlgorithmSummary(force = false) {

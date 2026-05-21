@@ -22,3 +22,8 @@ node_modules/
 
 # CODEXが残した空の入れ子フォルダ
 Social -buzz -radar/
+
+# アルゴリズム取得のスナップショット（実行時データ）
+data/algorithm-snapshots/
+data/algorithm-summary.json
+package-lock.json
