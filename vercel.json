@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": null,
+  "framework": null,
+  "outputDirectory": "public",
+  "functions": {
+    "api/variations.js": {
+      "maxDuration": 60
+    },
+    "api/algorithm-summary.js": {
+      "maxDuration": 60
+    },
+    "api/cron/refresh-algorithm.js": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/refresh-algorithm",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

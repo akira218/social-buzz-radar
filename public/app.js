@@ -1,5 +1,54 @@
 const $ = (selector) => document.querySelector(selector);
 
+// ===== パスワード認証 =====
+const AUTH_STORAGE_KEY = "buzz-radar-auth";
+
+function getAuthToken() {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setAuthToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_STORAGE_KEY, token);
+    else localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {}
+}
+
+function authHeaders() {
+  const token = getAuthToken();
+  return token ? { "X-Buzz-Auth": token } : {};
+}
+
+async function ensureAuthenticated() {
+  // 認証不要のローカル環境では何もしない
+  try {
+    const probe = await fetch("/api/algorithm-summary", { headers: authHeaders() });
+    if (probe.status === 401) {
+      // パスワードを聞く
+      const input = prompt("アクセスするためのパスワードを入力してください");
+      if (input) {
+        setAuthToken(input);
+        // 再チェック
+        const retry = await fetch("/api/algorithm-summary", { headers: authHeaders() });
+        if (retry.status === 401) {
+          setAuthToken("");
+          alert("パスワードが違います。ページを再読み込みしてください。");
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return true; // ネットワークエラー時は通す（ローカル開発想定）
+  }
+}
+
 const state = {
   lastPlans: [],
   autoRefresh: false,
@@ -181,7 +230,7 @@ async function analyze(live = true) {
   try {
     const response = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload(live))
     });
     const data = await response.json();
@@ -267,7 +316,7 @@ async function generateVariations() {
   try {
     const response = await fetch("/api/variations", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         trends: topTrends,
         niche: $("#niche").value,
@@ -610,7 +659,7 @@ async function loadAlgorithmSummary(force = false) {
   if (body) body.innerHTML = "<p>読み込み中...</p>";
   try {
     const url = force ? "/api/algorithm-summary?refresh=1" : "/api/algorithm-summary";
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: authHeaders() });
     const data = await response.json();
     algorithmState.data = data;
     const sub = $("#algorithmModalSub");
@@ -655,4 +704,7 @@ document.querySelectorAll("#algorithmTabs .tab-btn").forEach((btn) => {
 const algorithmRefreshBtn = $("#algorithmRefreshBtn");
 if (algorithmRefreshBtn) algorithmRefreshBtn.addEventListener("click", () => loadAlgorithmSummary(true));
 
-analyze(false);
+(async () => {
+  const ok = await ensureAuthenticated();
+  if (ok) analyze(false);
+})();

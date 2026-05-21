@@ -93,7 +93,29 @@ function stripHtml(html) {
     .trim();
 }
 
+// Vercel KV が利用可能ならそちらを優先、ない場合はファイルベース
+const KV_KEY = "algorithm-summary:latest";
+
+async function tryGetKvClient() {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
+  try {
+    const mod = await import("@vercel/kv");
+    return mod.kv;
+  } catch {
+    return null;
+  }
+}
+
 async function loadCache() {
+  const kv = await tryGetKvClient();
+  if (kv) {
+    try {
+      return await kv.get(KV_KEY);
+    } catch (error) {
+      console.warn("[algorithm-tracker] KV read failed:", error.message);
+    }
+  }
+  // ファイルベースフォールバック（ローカル開発用）
   try {
     const text = await readFile(path.join(rootDir, CACHE_PATH), "utf8");
     return JSON.parse(text);
@@ -103,8 +125,22 @@ async function loadCache() {
 }
 
 async function saveCache(data) {
-  await mkdir(path.join(rootDir, "data"), { recursive: true });
-  await writeFile(path.join(rootDir, CACHE_PATH), JSON.stringify(data, null, 2), "utf8");
+  const kv = await tryGetKvClient();
+  if (kv) {
+    try {
+      await kv.set(KV_KEY, data);
+      return;
+    } catch (error) {
+      console.warn("[algorithm-tracker] KV write failed:", error.message);
+    }
+  }
+  // ファイルベースフォールバック
+  try {
+    await mkdir(path.join(rootDir, "data"), { recursive: true });
+    await writeFile(path.join(rootDir, CACHE_PATH), JSON.stringify(data, null, 2), "utf8");
+  } catch (error) {
+    console.warn("[algorithm-tracker] file write failed:", error.message);
+  }
 }
 
 async function loadStaticAnalysis() {
@@ -267,20 +303,21 @@ async function detectChangesWithClaude(previousSummaries, currentSummaries, prev
 }
 
 async function loadPreviousSnapshot() {
-  try {
-    const files = await readFile(path.join(rootDir, CACHE_PATH), "utf8");
-    return JSON.parse(files);
-  } catch {
-    return null;
-  }
+  return await loadCache();
 }
 
 async function saveSnapshot(data) {
-  const dir = path.join(rootDir, SNAPSHOT_DIR);
-  await mkdir(dir, { recursive: true });
-  const timestamp = data.lastChecked.replace(/[:.]/g, "-");
-  const filePath = path.join(dir, `snapshot-${timestamp}.json`);
-  await writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
+  // ファイルシステム書き込み可能な環境（ローカル）のみ
+  if (process.env.VERCEL) return;
+  try {
+    const dir = path.join(rootDir, SNAPSHOT_DIR);
+    await mkdir(dir, { recursive: true });
+    const timestamp = data.lastChecked.replace(/[:.]/g, "-");
+    const filePath = path.join(dir, `snapshot-${timestamp}.json`);
+    await writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
+  } catch (error) {
+    console.warn("[algorithm-tracker] snapshot save failed:", error.message);
+  }
 }
 
 async function fetchAllSources() {
@@ -403,11 +440,13 @@ export async function getCurrentSummaryForContext() {
 }
 
 export function startAlgorithmTracking() {
-  // 起動時に1回（古かったら更新）
+  // Vercel環境では setInterval は使えない（Cron Jobs を使う）
+  if (process.env.VERCEL) return;
+
+  // ローカル開発時のみ起動時チェック＋定期更新
   getAlgorithmSummary().catch((err) => {
     console.error("[algorithm-tracker] 初回チェック失敗:", err.message);
   });
-  // 24時間ごとに再チェック
   setInterval(() => {
     refreshAlgorithmSummary().catch((err) => {
       console.error("[algorithm-tracker] 定期チェック失敗:", err.message);
