@@ -79,7 +79,7 @@ function makeNotePlan(trend, context) {
       "読者が今日試せるチェックリスト"
     ],
     lead: `${topic}が話題になっています。ただ、表面的な盛り上がりだけを追うと判断を誤りやすいので、${stance(context)}という前提で整理します。`,
-    tags: hashtags(topic, context)
+    tags: []
   };
 }
 

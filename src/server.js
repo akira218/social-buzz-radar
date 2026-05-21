@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { collectTrends } from "./lib/trendSources.js";
 import { scoreTrends } from "./lib/scoring.js";
 import { buildContentPlans, generateVariations } from "./lib/contentPlanner.js";
+import { isLLMEnabled, generateAllVariationsWithLLM } from "./lib/claudeVariations.js";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = path.join(rootDir, "public");
@@ -94,11 +95,31 @@ async function handleApi(request, response, url) {
       audience: body.audience || "",
       brandStance: body.brandStance || ""
     };
+
+    // Claude APIキーが設定されていればLLM生成、失敗時はテンプレートにフォールバック
+    if (isLLMEnabled()) {
+      try {
+        const llmResult = await generateAllVariationsWithLLM(trends, context);
+        sendJson(response, 200, {
+          generatedAt: new Date().toISOString(),
+          context,
+          variations: llmResult.results,
+          engine: "claude-sonnet-4-6",
+          usage: llmResult.usage
+        });
+        return;
+      } catch (error) {
+        console.error("Claude API failed, falling back to templates:", error.message);
+        // フォールスルー
+      }
+    }
+
     const result = generateVariations(trends, context);
     sendJson(response, 200, {
       generatedAt: new Date().toISOString(),
       context,
-      variations: result
+      variations: result,
+      engine: "templates"
     });
     return;
   }
