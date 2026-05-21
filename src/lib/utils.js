@@ -36,6 +36,23 @@ export function tokenize(value = "") {
   );
 }
 
+// 「AIアバター」を ["AIアバター","ai","アバター"] のように、
+// 日本語の文字種の境目でも分割する。マッチング用途の粒度を細かくする。
+export function tokenizeGranular(value = "") {
+  const base = tokenize(value);
+  const finer = [];
+  for (const token of base) {
+    finer.push(token);
+    const segments = token.match(/[A-Za-z0-9]+|[぀-ゟ]+|[゠-ヿ]+|[一-鿿]+/g);
+    if (segments && segments.length > 1) {
+      for (const seg of segments) {
+        if (seg.length >= 2) finer.push(seg);
+      }
+    }
+  }
+  return uniq(finer);
+}
+
 export function decodeHtml(value = "") {
   return String(value)
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")

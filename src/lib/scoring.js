@@ -1,4 +1,4 @@
-import { clamp, normalizeText, readJson, scoreFromAge, tokenize, uniq } from "./utils.js";
+import { clamp, normalizeText, readJson, scoreFromAge, tokenize, tokenizeGranular, uniq } from "./utils.js";
 
 let cachedRules = null;
 
@@ -23,17 +23,27 @@ function keywordScore(text, keywords) {
 }
 
 function creatorFitScore(trend, context = {}) {
-  const contextText = normalizeText([
+  const contextText = [
     context.niche,
     context.audience,
     context.brandStance,
     context.keywords
-  ].join(" "));
-  const contextTokens = tokenize(contextText);
+  ].filter(Boolean).join(" ");
+  const contextTokens = tokenizeGranular(contextText);
   if (!contextTokens.length) return 56;
   const trendText = normalizeText(`${trend.title} ${trend.signals?.related || ""}`);
   const hits = contextTokens.filter((token) => trendText.includes(token));
   return clamp(42 + (hits.length / Math.max(1, contextTokens.length)) * 80);
+}
+
+// 領域フィルター用: 領域語句との一致が一切ない trend を判定
+function isNicheUnrelated(trend, context = {}) {
+  const niche = (context.niche || "").trim();
+  if (!niche) return false;
+  const nicheTokens = tokenizeGranular(niche);
+  if (!nicheTokens.length) return false;
+  const trendText = normalizeText(`${trend.title} ${trend.signals?.related || ""}`);
+  return !nicheTokens.some((token) => trendText.includes(token));
 }
 
 function visualPotential(text) {
@@ -160,6 +170,11 @@ export async function scoreTrends(trends, context = {}) {
         ...explainTopFactors(common, "note", risks)
       ]
     };
+  }).filter((trend) => {
+    // 領域フィルター: 領域に一切関係しないトレンドを除外（ピン留めは除く）
+    if (trend.isPinned) return true;
+    if (context.nicheFilter === false) return true;
+    return !isNicheUnrelated(trend, context);
   }).sort((a, b) => {
     if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
     return b.buzzScore - a.buzzScore;

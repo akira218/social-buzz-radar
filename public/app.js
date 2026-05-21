@@ -22,6 +22,7 @@ function payload(live = true) {
     query: $("#query").value,
     manualTrends: $("#manualTrends").value,
     platforms: selectedPlatforms(),
+    nicheFilter: $("#nicheFilter")?.checked !== false,
     live,
     includeSample: true,
     limit: 8
