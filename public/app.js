@@ -51,6 +51,7 @@ async function ensureAuthenticated() {
 
 const state = {
   lastPlans: [],
+  lastAnalyzeData: null,
   autoRefresh: false,
   refreshIntervalMinutes: 5,
   refreshTimerId: null,
@@ -161,6 +162,7 @@ function renderCanvas(plans) {
 }
 
 function renderResults(data) {
+  state.lastAnalyzeData = data;
   const plans = data.plans || [];
   state.lastPlans = plans;
   $("#trendCount").textContent = String(data.scored?.length || 0);
@@ -205,14 +207,17 @@ function renderResults(data) {
       });
     }
 
+    const enabledForCard = selectedPlatforms();
+    const scoreKeys = enabledForCard.filter((p) => ["note", "x", "instagram"].includes(p));
     const scoreGrid = node.querySelector(".score-grid");
-    scoreGrid.innerHTML = ["note", "x", "instagram"].map((key) => (
-      `<div>${key}<strong>${Math.round(trend.platformScores[key])}</strong></div>`
+    scoreGrid.innerHTML = scoreKeys.map((key) => (
+      `<div>${key}<strong>${Math.round(trend.platformScores[key] || 0)}</strong></div>`
     )).join("");
 
     const planGrid = node.querySelector(".plan-grid");
-    planGrid.innerHTML = ["note", "x", "instagram"].map((key) => {
+    planGrid.innerHTML = scoreKeys.map((key) => {
       const item = plan.plans[key];
+      if (!item) return "";
       return `
         <section class="plan">
           <h3>${item.platform}</h3>
@@ -303,6 +308,13 @@ function stopAutoRefresh(keepToggle = false) {
 
 $("#analyzeBtn").addEventListener("click", () => analyze(true));
 
+// 投稿面チェックボックスを切り替えたら、既存の結果を再描画（API再呼出しは不要）
+document.querySelectorAll('fieldset input[type="checkbox"][value]').forEach((cb) => {
+  cb.addEventListener("change", () => {
+    if (state.lastAnalyzeData) renderResults(state.lastAnalyzeData);
+  });
+});
+
 const variationBtn = $("#variationBtn");
 if (variationBtn) {
   variationBtn.addEventListener("click", () => generateVariations());
@@ -336,15 +348,16 @@ async function generateForSpecificTrend(trend, btn, resultArea) {
     if (!entry) throw new Error("結果が空でした");
 
     const v = entry.variations;
+    const enabled = new Set(selectedPlatforms());
     resultArea.innerHTML = `
       <div class="claude-result-head">
         <span class="claude-badge">${data.engine === "claude-haiku-4-5" ? "✨ Claude生成" : "テンプレ生成"}</span>
         ${data.algorithmContextUsed ? `<span class="claude-badge subtle">アルゴリズム情報を考慮</span>` : ""}
       </div>
-      ${renderPlatformBlock("x", v.x)}
-      ${renderPlatformBlock("instagram", v.instagram)}
-      ${renderPlatformBlock("tiktok", v.tiktok)}
-      ${renderPlatformBlock("note", v.note)}
+      ${enabled.has("x") ? renderPlatformBlock("x", v.x) : ""}
+      ${enabled.has("instagram") ? renderPlatformBlock("instagram", v.instagram) : ""}
+      ${enabled.has("tiktok") ? renderPlatformBlock("tiktok", v.tiktok) : ""}
+      ${enabled.has("note") ? renderPlatformBlock("note", v.note) : ""}
     `;
   } catch (error) {
     resultArea.innerHTML = `<p class="claude-error">生成に失敗しました: ${escapeHtml(error.message)}</p>`;
@@ -400,6 +413,7 @@ function renderVariations(data) {
     const v = entry.variations;
     const card = document.createElement("article");
     card.className = "topic-card variation-card";
+    const enabled = new Set(selectedPlatforms());
     card.innerHTML = `
       <div class="topic-head">
         <div>
@@ -407,10 +421,10 @@ function renderVariations(data) {
           <h2>${escapeHtml(trend.title)}</h2>
         </div>
       </div>
-      ${renderPlatformBlock("x", v.x)}
-      ${renderPlatformBlock("instagram", v.instagram)}
-      ${renderPlatformBlock("tiktok", v.tiktok)}
-      ${renderPlatformBlock("note", v.note)}
+      ${enabled.has("x") ? renderPlatformBlock("x", v.x) : ""}
+      ${enabled.has("instagram") ? renderPlatformBlock("instagram", v.instagram) : ""}
+      ${enabled.has("tiktok") ? renderPlatformBlock("tiktok", v.tiktok) : ""}
+      ${enabled.has("note") ? renderPlatformBlock("note", v.note) : ""}
     `;
     container.appendChild(card);
   });
