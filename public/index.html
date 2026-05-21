@@ -12,8 +12,33 @@
         <p class="eyebrow">note / X / Instagram</p>
         <h1>Social Buzz Radar</h1>
       </div>
-      <div class="status" id="status">待機中</div>
+      <div class="topbar-actions">
+        <button id="algorithmBtn" class="ghost-btn" type="button">📊 アルゴリズム情報</button>
+        <div class="status" id="status">待機中</div>
+      </div>
     </header>
+
+    <div id="algorithmModal" class="modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-panel" role="dialog" aria-labelledby="algorithmModalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="algorithmModalTitle">SNSアルゴリズム情報</h2>
+            <p class="modal-sub" id="algorithmModalSub">最終確認: -</p>
+          </div>
+          <div class="modal-actions">
+            <button id="algorithmRefreshBtn" class="ghost-btn" type="button">今すぐ再確認</button>
+            <button class="ghost-btn" type="button" data-close>閉じる</button>
+          </div>
+        </div>
+        <div class="modal-tabs" id="algorithmTabs">
+          <button class="tab-btn active" data-tab="x" type="button">X</button>
+          <button class="tab-btn" data-tab="instagram" type="button">Instagram</button>
+          <button class="tab-btn" data-tab="note" type="button">note</button>
+        </div>
+        <div class="modal-body" id="algorithmBody">読み込み中...</div>
+      </div>
+    </div>
 
     <main class="layout">
       <section class="control-panel" aria-label="分析条件">

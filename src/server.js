@@ -6,6 +6,7 @@ import { collectTrends } from "./lib/trendSources.js";
 import { scoreTrends } from "./lib/scoring.js";
 import { buildContentPlans, generateVariations } from "./lib/contentPlanner.js";
 import { isLLMEnabled, generateAllVariationsWithLLM } from "./lib/claudeVariations.js";
+import { getAlgorithmSummary, refreshAlgorithmSummary, startAlgorithmTracking } from "./lib/algorithmTracker.js";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = path.join(rootDir, "public");
@@ -124,6 +125,17 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/algorithm-summary") {
+    const force = url.searchParams.get("refresh") === "1";
+    try {
+      const data = force ? await refreshAlgorithmSummary() : await getAlgorithmSummary();
+      sendJson(response, 200, data);
+    } catch (error) {
+      sendJson(response, 500, { error: error.message });
+    }
+    return;
+  }
+
   sendJson(response, 404, { error: "API endpoint not found" });
 }
 
@@ -145,4 +157,6 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(port, () => {
   console.log(`Social Buzz Radar: http://localhost:${port}`);
+  // バックグラウンドでアルゴリズム情報を定期取得
+  startAlgorithmTracking();
 });

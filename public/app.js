@@ -350,4 +350,139 @@ if (refreshIntervalSelect) {
   });
 }
 
+// ===== アルゴリズム情報モーダル =====
+
+const algorithmState = {
+  data: null,
+  currentTab: "x"
+};
+
+function formatDateTime(iso) {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(iso));
+}
+
+function renderAlgorithmTab() {
+  const body = $("#algorithmBody");
+  if (!body) return;
+  const data = algorithmState.data;
+  if (!data) {
+    body.innerHTML = "<p>読み込み中...</p>";
+    return;
+  }
+
+  const platform = algorithmState.currentTab;
+  const summaries = data.summaries || {};
+
+  // staticフォールバック（APIキー未設定時）
+  if (summaries.static_markdown) {
+    const escaped = summaries.static_markdown
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    body.innerHTML = `
+      <div class="algorithm-static">
+        <p class="hint">Claude APIキー未設定のため、ローカルの分析ファイルを表示しています。APIキーを設定すると公式情報の最新版が自動取得されます。</p>
+        <pre class="static-md">${escaped}</pre>
+      </div>
+    `;
+    return;
+  }
+
+  const summary = summaries[platform];
+  if (!summary) {
+    body.innerHTML = `<p>${platform} の情報がありません。</p>`;
+    return;
+  }
+
+  const sources = (data.sourceStatus || [])
+    .find((s) => s.platform === platform)?.urls || [];
+
+  body.innerHTML = `
+    <div class="algorithm-section">
+      <h3>全体像</h3>
+      <p class="algorithm-summary">${summary.summary || ""}</p>
+    </div>
+    <div class="algorithm-section">
+      <h3>投稿時に意識すべきポイント</h3>
+      <ul class="algorithm-list">
+        ${(summary.key_points || []).map((p) => `<li>${p}</li>`).join("")}
+      </ul>
+    </div>
+    ${summary.what_to_avoid?.length ? `
+      <div class="algorithm-section">
+        <h3>避けるべき行動</h3>
+        <ul class="algorithm-list warn">
+          ${summary.what_to_avoid.map((p) => `<li>${p}</li>`).join("")}
+        </ul>
+      </div>
+    ` : ""}
+    <div class="algorithm-section">
+      <h3>情報源</h3>
+      <ul class="algorithm-sources">
+        ${sources.map((s) => `
+          <li>
+            <span class="source-status ${s.status}">${s.status === "ok" ? "✓" : "✗"}</span>
+            <a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+async function loadAlgorithmSummary(force = false) {
+  const body = $("#algorithmBody");
+  if (body) body.innerHTML = "<p>読み込み中...</p>";
+  try {
+    const url = force ? "/api/algorithm-summary?refresh=1" : "/api/algorithm-summary";
+    const response = await fetch(url);
+    const data = await response.json();
+    algorithmState.data = data;
+    const sub = $("#algorithmModalSub");
+    if (sub) {
+      const engineLabel = data.engine === "claude-sonnet-4-6" ? "Claude Sonnet 4.6で要約" : "静的ファイル";
+      sub.textContent = `最終確認: ${formatDateTime(data.lastChecked)}（${engineLabel}）`;
+    }
+    renderAlgorithmTab();
+  } catch (error) {
+    if (body) body.innerHTML = `<p>取得に失敗しました: ${error.message}</p>`;
+  }
+}
+
+function openAlgorithmModal() {
+  const modal = $("#algorithmModal");
+  if (!modal) return;
+  modal.hidden = false;
+  if (!algorithmState.data) loadAlgorithmSummary(false);
+}
+
+function closeAlgorithmModal() {
+  const modal = $("#algorithmModal");
+  if (modal) modal.hidden = true;
+}
+
+const algorithmBtn = $("#algorithmBtn");
+if (algorithmBtn) algorithmBtn.addEventListener("click", openAlgorithmModal);
+
+document.querySelectorAll("#algorithmModal [data-close]").forEach((el) => {
+  el.addEventListener("click", closeAlgorithmModal);
+});
+
+document.querySelectorAll("#algorithmTabs .tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#algorithmTabs .tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    algorithmState.currentTab = btn.dataset.tab;
+    renderAlgorithmTab();
+  });
+});
+
+const algorithmRefreshBtn = $("#algorithmRefreshBtn");
+if (algorithmRefreshBtn) algorithmRefreshBtn.addEventListener("click", () => loadAlgorithmSummary(true));
+
 analyze(false);
