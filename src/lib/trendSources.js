@@ -146,7 +146,70 @@ async function fetchRssSource(source) {
   };
 }
 
-function extractNoteTopics(html) {
+// note API v3: 指定ハッシュタグの最新記事を取得（最大50件）
+async function fetchNoteHashtag(hashtag) {
+  const encoded = encodeURIComponent(hashtag);
+  const apiUrl = `https://note.com/api/v3/hashtags/${encoded}/notes?page=1`;
+  const response = await fetchWithTimeout(apiUrl, {
+    headers: { accept: "application/json" }
+  });
+  const json = await response.json();
+  const notes = json?.data?.notes || [];
+  return notes.map((note) => ({
+    title: note.name,
+    key: note.key,
+    publishedAt: note.publish_at ? new Date(note.publish_at).toISOString() : new Date().toISOString(),
+    userUrlName: note.user?.urlname || "",
+    likeCount: Number(note.likeCount || 0),
+    hashtag
+  }));
+}
+
+function defaultHashtags(query = "") {
+  const tokens = tokenize(query)
+    .map((token) => token.toUpperCase())
+    .filter((token) => token.length >= 2 && token.length <= 16);
+  if (tokens.length > 0) return tokens.slice(0, 3);
+  return ["AI", "生成AI", "SNSマーケティング"];
+}
+
+function extractNoteTopics(html, sourceUrl = "https://note.com/") {
+  // 1次戦略: note記事のURLパターン (/[user]/n/[id]) を含む<a>タグから本物の記事タイトルを抽出
+  const articleLinkRegex = /<a[^>]*href=["']?(\/[^"'\s\/]+\/n\/[a-zA-Z0-9_-]+)["']?[^>]*>([\s\S]*?)<\/a>/gi;
+  const articles = [];
+  const seen = new Set();
+  let match;
+
+  while ((match = articleLinkRegex.exec(html)) !== null) {
+    const url = `https://note.com${match[1]}`;
+    const titleHtml = match[2];
+    const title = decodeHtml(titleHtml.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+    if (!title || title.length < 5 || title.length > 100) continue;
+    if (/^(note|ログイン|会員登録|もっとみる|フォロー)$/.test(title)) continue;
+    if (seen.has(title)) continue;
+    seen.add(title);
+    articles.push({ title, url });
+  }
+
+  // 構造化抽出で5件以上見つかればそれを使う
+  if (articles.length >= 5) {
+    return articles.slice(0, 20).map((article, index) => ({
+      id: `note_public_page:${normalizeText(article.title).slice(0, 80)}`,
+      title: article.title,
+      source: "note_public_page",
+      sourceLabel: "note公開ページ",
+      url: article.url,
+      publishedAt: new Date().toISOString(),
+      signals: {
+        rank: index + 1,
+        growth: Math.max(0.4, 1 - index * 0.04),
+        volumeText: `note_article_rank:${index + 1}`,
+        sourceQuality: SOURCE_QUALITY.note_public_page
+      }
+    }));
+  }
+
+  // 2次戦略 (フォールバック): 単語頻度
   const text = decodeHtml(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -166,7 +229,7 @@ function extractNoteTopics(html) {
       title,
       source: "note_public_page",
       sourceLabel: "note公開ページ",
-      url: process.env.NOTE_TREND_URL || "https://note.com/",
+      url: sourceUrl,
       publishedAt: new Date().toISOString(),
       signals: {
         rank: index + 1,
@@ -177,23 +240,83 @@ function extractNoteTopics(html) {
     }));
 }
 
-async function fetchNotePublicPage() {
-  if (process.env.ENABLE_NOTE_PUBLIC_PAGE !== "1") {
+async function fetchNotePublicPage(query = "") {
+  // デフォルトで有効。明示的に "0" を指定したときだけスキップ
+  if (process.env.ENABLE_NOTE_PUBLIC_PAGE === "0") {
     return {
       source: "note_public_page",
       ok: false,
       skipped: true,
-      message: "ENABLE_NOTE_PUBLIC_PAGE is not enabled."
+      message: "ENABLE_NOTE_PUBLIC_PAGE is set to 0."
     };
   }
+
+  // 1次戦略: noteの公式APIから複数ハッシュタグを並列取得
+  try {
+    const hashtags = defaultHashtags(query);
+    const settled = await Promise.allSettled(hashtags.map((h) => fetchNoteHashtag(h)));
+    const allItems = [];
+    const seenTitles = new Set();
+
+    for (const result of settled) {
+      if (result.status !== "fulfilled") continue;
+      for (const note of result.value) {
+        if (!note.title || seenTitles.has(note.title)) continue;
+        seenTitles.add(note.title);
+        allItems.push(note);
+      }
+    }
+
+    if (allItems.length > 0) {
+      // いいね数が多いものを上位に
+      allItems.sort((a, b) => b.likeCount - a.likeCount);
+      return {
+        source: "note_public_page",
+        ok: true,
+        items: allItems.slice(0, 30).map((note, index) => ({
+          id: `note_public_page:${normalizeText(note.title).slice(0, 80)}`,
+          title: note.title,
+          source: "note_public_page",
+          sourceLabel: "note公開記事",
+          url: note.userUrlName && note.key ? `https://note.com/${note.userUrlName}/n/${note.key}` : "https://note.com/",
+          publishedAt: note.publishedAt,
+          signals: {
+            rank: index + 1,
+            growth: Math.min(1, note.likeCount / 100),
+            volumeText: `note_likes:${note.likeCount}`,
+            related: `#${note.hashtag}`,
+            sourceQuality: SOURCE_QUALITY.note_public_page
+          }
+        }))
+      };
+    }
+  } catch (error) {
+    // API失敗時はHTMLフォールバックへ
+  }
+
+  // 2次戦略 (フォールバック): HTMLスクレイピング
   const url = process.env.NOTE_TREND_URL || "https://note.com/";
-  const response = await fetchWithTimeout(url);
-  const html = await response.text();
-  return {
-    source: "note_public_page",
-    ok: true,
-    items: extractNoteTopics(html)
-  };
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "ja,en-US;q=0.9,en;q=0.8"
+      }
+    });
+    const html = await response.text();
+    return {
+      source: "note_public_page",
+      ok: true,
+      items: extractNoteTopics(html, url)
+    };
+  } catch (error) {
+    return {
+      source: "note_public_page",
+      ok: false,
+      error: error.message
+    };
+  }
 }
 
 export function parseManualTrends(text = "") {
@@ -272,7 +395,7 @@ export async function collectTrends(options = {}) {
     const tasks = [
       fetchYahooRealtimeApi(),
       ...RSS_SOURCES.map((source) => fetchRssSource(source)),
-      fetchNotePublicPage()
+      fetchNotePublicPage(options.query || "")
     ];
     const settled = await Promise.allSettled(tasks);
     for (const result of settled) {

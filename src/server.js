@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectTrends } from "./lib/trendSources.js";
 import { scoreTrends } from "./lib/scoring.js";
-import { buildContentPlans } from "./lib/contentPlanner.js";
+import { buildContentPlans, generateVariations } from "./lib/contentPlanner.js";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = path.join(rootDir, "public");
@@ -76,6 +76,29 @@ async function handleApi(request, response, url) {
       sources: collected.sourceResults,
       scored,
       plans
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/variations") {
+    const body = await readBody(request);
+    const trends = Array.isArray(body.trends) ? body.trends : [];
+    if (!trends.length) {
+      sendJson(response, 400, {
+        error: "trendsが空です。先に分析を実行してから呼び出してください。"
+      });
+      return;
+    }
+    const context = {
+      niche: body.niche || "",
+      audience: body.audience || "",
+      brandStance: body.brandStance || ""
+    };
+    const result = generateVariations(trends, context);
+    sendJson(response, 200, {
+      generatedAt: new Date().toISOString(),
+      context,
+      variations: result
     });
     return;
   }

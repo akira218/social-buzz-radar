@@ -118,6 +118,16 @@ function renderResults(data) {
   $("#generatedAt").textContent = formatTime(data.generatedAt);
   renderCanvas(plans);
 
+  const vBtn = $("#variationBtn");
+  if (vBtn) {
+    if (plans.length > 0) {
+      vBtn.disabled = false;
+      vBtn.title = "上位3トピックについて4種類のバリエーションを生成";
+    } else {
+      vBtn.disabled = true;
+    }
+  }
+
   const container = $("#results");
   const template = $("#resultTemplate");
   container.replaceChildren();
@@ -165,7 +175,8 @@ function renderResults(data) {
 async function analyze(live = true) {
   setStatus("分析中");
   $("#analyzeBtn").disabled = true;
-  $("#sampleBtn").disabled = true;
+  const vBtn = $("#variationBtn");
+  if (vBtn) vBtn.disabled = true;
   try {
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -181,7 +192,6 @@ async function analyze(live = true) {
     $("#results").innerHTML = `<article class="topic-card"><h2>取得に失敗しました</h2><p>${error.message}</p></article>`;
   } finally {
     $("#analyzeBtn").disabled = false;
-    $("#sampleBtn").disabled = false;
   }
 }
 
@@ -233,7 +243,95 @@ function stopAutoRefresh(keepToggle = false) {
 }
 
 $("#analyzeBtn").addEventListener("click", () => analyze(true));
-$("#sampleBtn").addEventListener("click", () => analyze(false));
+
+const variationBtn = $("#variationBtn");
+if (variationBtn) {
+  variationBtn.addEventListener("click", () => generateVariations());
+}
+
+async function generateVariations() {
+  if (!state.lastPlans || state.lastPlans.length === 0) {
+    setStatus("先に「分析」を押してください");
+    return;
+  }
+  const topTrends = state.lastPlans.slice(0, 3).map((plan) => ({
+    title: plan.trend.title,
+    publishedAt: plan.trend.publishedAt,
+    sources: plan.trend.sources,
+    url: plan.trend.url
+  }));
+  setStatus("バリエーション生成中");
+  $("#analyzeBtn").disabled = true;
+  variationBtn.disabled = true;
+  try {
+    const response = await fetch("/api/variations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        trends: topTrends,
+        niche: $("#niche").value,
+        audience: $("#audience").value,
+        brandStance: $("#brandStance").value
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "バリエーション生成に失敗しました");
+    renderVariations(data);
+    setStatus("バリエーション完了");
+  } catch (error) {
+    setStatus("エラー");
+    $("#results").innerHTML = `<article class="topic-card"><h2>バリエーション生成に失敗しました</h2><p>${error.message}</p></article>`;
+  } finally {
+    $("#analyzeBtn").disabled = false;
+    variationBtn.disabled = false;
+  }
+}
+
+function renderVariations(data) {
+  const container = $("#results");
+  container.replaceChildren();
+  (data.variations || []).forEach((entry, index) => {
+    const trend = entry.trend;
+    const variations = entry.variations;
+    const card = document.createElement("article");
+    card.className = "topic-card variation-card";
+    card.innerHTML = `
+      <div class="topic-head">
+        <div>
+          <p class="rank">#${index + 1} / バリエーション</p>
+          <h2>${trend.title}</h2>
+        </div>
+      </div>
+      ${renderVariationGroup("note", variations.note, "記事構成")}
+      ${renderVariationGroup("x", variations.x, "X投稿")}
+      ${renderVariationGroup("instagram", variations.instagram, "Reels台本")}
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderVariationGroup(platform, items, label) {
+  const list = items.map((item, i) => {
+    const body = item.draft
+      ? item.draft.replace(/\n/g, "<br>")
+      : item.title
+        ? `<strong>${item.title}</strong><br>${(item.outline || []).join("<br>")}${item.lead ? `<br><br>${item.lead}` : ""}`
+        : `<strong>${item.hook}</strong><br>${(item.beats || []).join("<br>")}${item.caption ? `<br><br>${item.caption}` : ""}`;
+    return `
+      <details class="variation-item" ${i === 0 ? "open" : ""}>
+        <summary>${item.angle}${item.hook ? `: ${item.hook}` : ""}</summary>
+        <p>${body}</p>
+        ${item.hashtags ? `<p class="tags">${item.hashtags.join(" ")}</p>` : ""}
+      </details>
+    `;
+  }).join("");
+  return `
+    <section class="variation-platform">
+      <h3>${label}</h3>
+      ${list}
+    </section>
+  `;
+}
 
 const autoRefreshToggle = $("#autoRefreshToggle");
 if (autoRefreshToggle) {

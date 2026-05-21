@@ -404,6 +404,58 @@ summary {
   padding-left: 18px;
 }
 
+.variation-card {
+  border-left: 4px solid var(--mint-strong);
+}
+
+.variation-platform {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.variation-platform h3 {
+  margin: 0 0 10px;
+  color: var(--mint-strong);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.variation-item {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafdfb;
+}
+
+.variation-item summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.variation-item[open] summary {
+  margin-bottom: 8px;
+  color: var(--mint-strong);
+}
+
+.variation-item p {
+  margin: 6px 0;
+  color: #38403c;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.variation-item .tags {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;

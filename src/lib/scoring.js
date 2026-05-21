@@ -141,14 +141,17 @@ export async function scoreTrends(trends, context = {}) {
       selected.reduce((sum, key) => sum + (platformScores[key] || 0), 0) / selected.length
     );
 
+    const sourceKeys = trend.sourceKeys || [trend.source];
+    const isPinned = sourceKeys.includes("manual");
     return {
       ...trend,
       title: trend.title.trim(),
       sources: trend.sources || [trend.sourceLabel || trend.source],
-      sourceKeys: trend.sourceKeys || [trend.source],
+      sourceKeys,
       evidenceUrls: uniq(trend.evidenceUrls || [trend.url].filter(Boolean)),
       platformScores,
       buzzScore,
+      isPinned,
       metrics: common,
       risk: risks,
       why: [
@@ -157,5 +160,8 @@ export async function scoreTrends(trends, context = {}) {
         ...explainTopFactors(common, "note", risks)
       ]
     };
-  }).sort((a, b) => b.buzzScore - a.buzzScore);
+  }).sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    return b.buzzScore - a.buzzScore;
+  });
 }
