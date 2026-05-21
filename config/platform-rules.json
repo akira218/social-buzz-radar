@@ -1,0 +1,105 @@
+{
+  "platforms": {
+    "x": {
+      "name": "X",
+      "prioritySignals": [
+        "freshness",
+        "conversation",
+        "repost_share",
+        "author_follow_likelihood",
+        "negative_feedback_avoidance"
+      ],
+      "weights": {
+        "recency": 0.28,
+        "conversation": 0.22,
+        "source": 0.16,
+        "novelty": 0.14,
+        "crossSource": 0.10,
+        "creatorFit": 0.10
+      }
+    },
+    "instagram": {
+      "name": "Instagram",
+      "prioritySignals": [
+        "watch_time",
+        "replay",
+        "share",
+        "save",
+        "originality",
+        "recommendation_eligibility"
+      ],
+      "weights": {
+        "visual": 0.24,
+        "shareSave": 0.22,
+        "recency": 0.16,
+        "source": 0.13,
+        "originality": 0.13,
+        "creatorFit": 0.12
+      }
+    },
+    "note": {
+      "name": "note",
+      "prioritySignals": [
+        "topic_classification",
+        "reader_interest_match",
+        "first_hand_experience",
+        "search_internal_circulation",
+        "quality_filtering"
+      ],
+      "weights": {
+        "depth": 0.24,
+        "searchEvergreen": 0.20,
+        "topicMatch": 0.18,
+        "source": 0.14,
+        "originality": 0.13,
+        "recency": 0.11
+      }
+    }
+  },
+  "riskTerms": [
+    "自殺",
+    "死ね",
+    "暴力",
+    "差別",
+    "詐欺",
+    "必ず儲かる",
+    "絶対稼げる",
+    "医療",
+    "治る",
+    "診断",
+    "投資助言",
+    "インサイダー",
+    "選挙",
+    "アダルト",
+    "晒し"
+  ],
+  "spamSignals": [
+    "いいねして",
+    "フォローして",
+    "拡散希望",
+    "RTお願いします",
+    "相互フォロー",
+    "爆益",
+    "今だけ無料"
+  ],
+  "highIntentTerms": [
+    "比較",
+    "なぜ",
+    "理由",
+    "仕組み",
+    "失敗",
+    "炎上",
+    "発表",
+    "新機能",
+    "値上げ",
+    "規制",
+    "ランキング",
+    "生成AI",
+    "AI",
+    "GitHub",
+    "買収",
+    "決算",
+    "事例",
+    "テンプレート"
+  ]
+}

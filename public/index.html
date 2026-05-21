@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Social Buzz Radar</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">note / X / Instagram</p>
+        <h1>Social Buzz Radar</h1>
+      </div>
+      <div class="status" id="status">待機中</div>
+    </header>
+
+    <main class="layout">
+      <section class="control-panel" aria-label="分析条件">
+        <label>
+          領域
+          <input id="niche" value="AIアバター、SNSマーケティング、クリエイター支援">
+        </label>
+        <label>
+          読者
+          <input id="audience" value="経営者、マーケ担当、クリエイター">
+        </label>
+        <label>
+          立場
+          <textarea id="brandStance" rows="2">公式情報を根拠に、実務で使える形まで落とし込む</textarea>
+        </label>
+        <label>
+          絞り込み
+          <input id="query" placeholder="例: 生成AI 法務 採用">
+        </label>
+
+        <fieldset>
+          <legend>投稿面</legend>
+          <label class="check"><input type="checkbox" value="note" checked> note</label>
+          <label class="check"><input type="checkbox" value="x" checked> X</label>
+          <label class="check"><input type="checkbox" value="instagram" checked> Instagram</label>
+        </fieldset>
+
+        <label>
+          手入力トレンド
+          <textarea id="manualTrends" rows="6" placeholder="1行1トピック。topic | source | url 形式も可"></textarea>
+        </label>
+
+        <div class="actions">
+          <button id="analyzeBtn">分析</button>
+          <button id="sampleBtn" class="secondary">サンプルのみ</button>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="分析結果">
+        <div class="auto-refresh-bar">
+          <label class="check">
+            <input type="checkbox" id="autoRefreshToggle"> 自動更新
+          </label>
+          <select id="refreshInterval">
+            <option value="5" selected>5分ごと</option>
+            <option value="10">10分ごと</option>
+            <option value="15">15分ごと</option>
+            <option value="30">30分ごと</option>
+          </select>
+          <span id="countdown" class="countdown">停止中</span>
+        </div>
+
+        <div class="summary-strip">
+          <div>
+            <span class="label">候補</span>
+            <strong id="trendCount">0</strong>
+          </div>
+          <div>
+            <span class="label">最高スコア</span>
+            <strong id="topScore">0</strong>
+          </div>
+          <div>
+            <span class="label">更新</span>
+            <strong id="generatedAt">-</strong>
+          </div>
+        </div>
+
+        <div class="canvas-band">
+          <canvas id="scoreCanvas" width="880" height="240"></canvas>
+        </div>
+
+        <div id="results" class="results"></div>
+      </section>
+    </main>
+
+    <template id="resultTemplate">
+      <article class="topic-card">
+        <div class="topic-head">
+          <div>
+            <p class="rank"></p>
+            <h2></h2>
+            <p class="published-info"></p>
+          </div>
+          <div class="score-pill"></div>
+        </div>
+        <div class="score-grid"></div>
+        <div class="source-line"></div>
+        <div class="plan-grid"></div>
+        <details>
+          <summary>検証と安全確認</summary>
+          <ul class="checklist"></ul>
+        </details>
+      </article>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,254 @@
+const $ = (selector) => document.querySelector(selector);
+
+const state = {
+  lastPlans: [],
+  autoRefresh: false,
+  refreshIntervalMinutes: 5,
+  refreshTimerId: null,
+  countdownTimerId: null,
+  nextRefreshAt: null
+};
+
+function selectedPlatforms() {
+  return [...document.querySelectorAll('fieldset input[type="checkbox"]:checked')]
+    .map((input) => input.value);
+}
+
+function payload(live = true) {
+  return {
+    niche: $("#niche").value,
+    audience: $("#audience").value,
+    brandStance: $("#brandStance").value,
+    query: $("#query").value,
+    manualTrends: $("#manualTrends").value,
+    platforms: selectedPlatforms(),
+    live,
+    includeSample: true,
+    limit: 8
+  };
+}
+
+function setStatus(text) {
+  $("#status").textContent = text;
+}
+
+function formatTime(iso) {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(iso));
+}
+
+function timeAgo(iso) {
+  if (!iso) return "公開日不明";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "公開日不明";
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "たった今";
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}日前`;
+  return `${Math.floor(days / 7)}週間前`;
+}
+
+function freshnessClass(iso) {
+  if (!iso) return "stale";
+  const hours = (Date.now() - new Date(iso).getTime()) / 3600000;
+  if (Number.isNaN(hours)) return "stale";
+  if (hours < 1) return "fresh-hot";
+  if (hours < 6) return "fresh-warm";
+  if (hours < 24) return "fresh-cool";
+  return "stale";
+}
+
+function planText(plan) {
+  if (plan.draft) return plan.draft;
+  if (plan.title) return `${plan.title}\n\n${plan.outline.join("\n")}`;
+  return `${plan.reelHook}\n\n${plan.beats.join("\n")}`;
+}
+
+function renderCanvas(plans) {
+  const canvas = $("#scoreCanvas");
+  const ctx = canvas.getContext("2d");
+  const { width, height } = canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  const max = Math.max(100, ...plans.map((plan) => plan.trend.buzzScore));
+  const barWidth = Math.max(32, (width - 80) / Math.max(1, plans.length) - 12);
+  const colors = ["#1a8f64", "#ff6b5a", "#f6b73c", "#7357c8"];
+
+  ctx.strokeStyle = "#d9e1dc";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i += 1) {
+    const y = 28 + i * 48;
+    ctx.beginPath();
+    ctx.moveTo(44, y);
+    ctx.lineTo(width - 20, y);
+    ctx.stroke();
+  }
+
+  plans.forEach((plan, index) => {
+    const score = plan.trend.buzzScore;
+    const h = Math.max(8, (score / max) * 150);
+    const x = 52 + index * (barWidth + 12);
+    const y = height - 38 - h;
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fillRect(x, y, barWidth, h);
+    ctx.fillStyle = "#202124";
+    ctx.font = "700 12px system-ui";
+    ctx.fillText(Math.round(score), x, y - 8);
+    ctx.fillStyle = "#66706b";
+    ctx.font = "12px system-ui";
+    const label = plan.trend.title.slice(0, 12);
+    ctx.fillText(label, x, height - 16);
+  });
+}
+
+function renderResults(data) {
+  const plans = data.plans || [];
+  state.lastPlans = plans;
+  $("#trendCount").textContent = String(data.scored?.length || 0);
+  $("#topScore").textContent = String(Math.round(plans[0]?.trend?.buzzScore || 0));
+  $("#generatedAt").textContent = formatTime(data.generatedAt);
+  renderCanvas(plans);
+
+  const container = $("#results");
+  const template = $("#resultTemplate");
+  container.replaceChildren();
+
+  plans.forEach((plan, index) => {
+    const node = template.content.cloneNode(true);
+    const trend = plan.trend;
+    node.querySelector(".rank").textContent = `#${index + 1} / ${plan.bestPlatform.toUpperCase()}`;
+    node.querySelector("h2").textContent = trend.title;
+    node.querySelector(".score-pill").textContent = `${Math.round(trend.buzzScore)} pts`;
+    node.querySelector(".source-line").textContent = `source: ${(trend.sources || []).join(" / ")}`;
+
+    const publishedInfo = node.querySelector(".published-info");
+    if (publishedInfo) {
+      publishedInfo.textContent = timeAgo(trend.publishedAt);
+      publishedInfo.className = `published-info ${freshnessClass(trend.publishedAt)}`;
+    }
+
+    const scoreGrid = node.querySelector(".score-grid");
+    scoreGrid.innerHTML = ["note", "x", "instagram"].map((key) => (
+      `<div>${key}<strong>${Math.round(trend.platformScores[key])}</strong></div>`
+    )).join("");
+
+    const planGrid = node.querySelector(".plan-grid");
+    planGrid.innerHTML = ["note", "x", "instagram"].map((key) => {
+      const item = plan.plans[key];
+      return `
+        <section class="plan">
+          <h3>${item.platform}</h3>
+          <p>${item.objective}</p>
+          <p>${planText(item).replace(/\n/g, "<br>")}</p>
+          <p>${(item.hashtags || item.tags || []).join(" ")}</p>
+        </section>
+      `;
+    }).join("");
+
+    const checklist = node.querySelector(".checklist");
+    checklist.innerHTML = plan.action.safetyChecklist
+      .map((item) => `<li>${item}</li>`)
+      .join("");
+    container.appendChild(node);
+  });
+}
+
+async function analyze(live = true) {
+  setStatus("分析中");
+  $("#analyzeBtn").disabled = true;
+  $("#sampleBtn").disabled = true;
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload(live))
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "分析に失敗しました");
+    renderResults(data);
+    setStatus("完了");
+  } catch (error) {
+    setStatus("エラー");
+    $("#results").innerHTML = `<article class="topic-card"><h2>取得に失敗しました</h2><p>${error.message}</p></article>`;
+  } finally {
+    $("#analyzeBtn").disabled = false;
+    $("#sampleBtn").disabled = false;
+  }
+}
+
+function updateCountdown() {
+  const el = $("#countdown");
+  if (!el) return;
+  if (!state.nextRefreshAt) {
+    el.textContent = "停止中";
+    el.classList.remove("countdown-active");
+    return;
+  }
+  const remainingMs = state.nextRefreshAt - Date.now();
+  if (remainingMs <= 0) {
+    el.textContent = "更新中…";
+    return;
+  }
+  const remainingS = Math.ceil(remainingMs / 1000);
+  const m = Math.floor(remainingS / 60);
+  const s = remainingS % 60;
+  el.textContent = `次回更新まで ${m}:${String(s).padStart(2, "0")}`;
+  el.classList.add("countdown-active");
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh(true);
+  state.autoRefresh = true;
+  const intervalMs = state.refreshIntervalMinutes * 60 * 1000;
+  state.nextRefreshAt = Date.now() + intervalMs;
+  state.refreshTimerId = setInterval(async () => {
+    await analyze(true);
+    state.nextRefreshAt = Date.now() + intervalMs;
+  }, intervalMs);
+  state.countdownTimerId = setInterval(updateCountdown, 1000);
+  updateCountdown();
+}
+
+function stopAutoRefresh(keepToggle = false) {
+  state.autoRefresh = false;
+  if (state.refreshTimerId) clearInterval(state.refreshTimerId);
+  if (state.countdownTimerId) clearInterval(state.countdownTimerId);
+  state.refreshTimerId = null;
+  state.countdownTimerId = null;
+  state.nextRefreshAt = null;
+  updateCountdown();
+  if (!keepToggle) {
+    const toggle = $("#autoRefreshToggle");
+    if (toggle) toggle.checked = false;
+  }
+}
+
+$("#analyzeBtn").addEventListener("click", () => analyze(true));
+$("#sampleBtn").addEventListener("click", () => analyze(false));
+
+const autoRefreshToggle = $("#autoRefreshToggle");
+if (autoRefreshToggle) {
+  autoRefreshToggle.addEventListener("change", (event) => {
+    if (event.target.checked) startAutoRefresh();
+    else stopAutoRefresh(true);
+  });
+}
+
+const refreshIntervalSelect = $("#refreshInterval");
+if (refreshIntervalSelect) {
+  refreshIntervalSelect.addEventListener("change", (event) => {
+    state.refreshIntervalMinutes = Number(event.target.value);
+    if (state.autoRefresh) startAutoRefresh();
+  });
+}
+
+analyze(false);

@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Secrets / 環境変数（誤コミット防止の二重防護）
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node
+node_modules/
+
+# Editors
+.vscode/
+.idea/
+
+# Vercel
+.vercel/
+
+# CODEXが残した空の入れ子フォルダ
+Social -buzz -radar/

@@ -1,0 +1,57 @@
+[
+  {
+    "title": "Google I/O 2026",
+    "source": "sample",
+    "url": "https://note.com/",
+    "publishedAt": "2026-05-21T00:00:00+09:00",
+    "signals": {
+      "rank": 1,
+      "volumeText": "noteトップ表示例",
+      "growth": 0.78
+    }
+  },
+  {
+    "title": "Command Line Interface",
+    "source": "sample",
+    "url": "https://note.com/",
+    "publishedAt": "2026-05-21T00:00:00+09:00",
+    "signals": {
+      "rank": 2,
+      "volumeText": "noteトップ表示例",
+      "growth": 0.58
+    }
+  },
+  {
+    "title": "生成AIの社会実装",
+    "source": "sample",
+    "url": "https://note.jp/",
+    "publishedAt": "2026-05-20T12:00:00+09:00",
+    "signals": {
+      "rank": 3,
+      "volumeText": "AI関連",
+      "growth": 0.64
+    }
+  },
+  {
+    "title": "企業アカウントのInstagram Reels運用",
+    "source": "sample",
+    "url": "https://about.instagram.com/",
+    "publishedAt": "2026-05-20T10:00:00+09:00",
+    "signals": {
+      "rank": 4,
+      "volumeText": "SNS運用",
+      "growth": 0.44
+    }
+  },
+  {
+    "title": "X For Youアルゴリズム GitHub公開",
+    "source": "sample",
+    "url": "https://github.com/xai-org/x-algorithm",
+    "publishedAt": "2026-05-15T00:00:00+09:00",
+    "signals": {
+      "rank": 5,
+      "volumeText": "公式GitHub",
+      "growth": 0.70
+    }
+  }
+]

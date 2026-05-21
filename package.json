@@ -1,0 +1,15 @@
+{
+  "name": "social-buzz-radar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time trend and platform-fit analyzer for note, X, and Instagram.",
+  "scripts": {
+    "start": "node src/server.js",
+    "analyze": "node src/cli.js --sample",
+    "check": "node --check src/server.js && node --check src/cli.js && node --check src/lib/trendSources.js && node --check src/lib/scoring.js && node --check src/lib/contentPlanner.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
